@@ -1,0 +1,791 @@
+<!DOCTYPE html>
+<html lang="ko">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>경매알리미 — 법원 경매 물건 실시간 워치독</title>
+    <script src="https://cdn.tailwindcss.com"></script>
+    <link rel="stylesheet" href="https://unpkg.com/leaflet@1.9.4/dist/leaflet.css" />
+    <script src="https://unpkg.com/leaflet@1.9.4/dist/leaflet.js"></script>
+    <link href="https://fonts.googleapis.com/css2?family=Noto+Sans+KR:wght@300;400;500;700;900&display=swap" rel="stylesheet">
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css">
+    <script src="https://cdn.jsdelivr.net/npm/marked/marked.min.js"></script>
+    <style>
+        body { font-family: 'Noto Sans KR', sans-serif; }
+        ::-webkit-scrollbar { width: 6px; }
+        ::-webkit-scrollbar-track { background: #f1f5f9; }
+        ::-webkit-scrollbar-thumb { background: #cbd5e1; border-radius: 4px; }
+        .trend-bar { transition: width 0.6s ease-out; }
+        @keyframes shimmer { 0%{background-position:-200% 0} 100%{background-position:200% 0} }
+        .skeleton { background:linear-gradient(90deg,#e2e8f0 25%,#f1f5f9 50%,#e2e8f0 75%); background-size:200% 100%; animation:shimmer 1.5s infinite; border-radius:8px; }
+        .leaflet-popup-content-wrapper { border-radius:12px; }
+        .bid-pulse { animation: pulse 2s cubic-bezier(0.4,0,0.6,1) infinite; }
+        @keyframes pulse { 0%,100%{opacity:1} 50%{opacity:.5} }
+    </style>
+</head>
+<body class="bg-slate-50 text-slate-800 h-screen flex flex-col overflow-hidden">
+
+    <!-- 상단 바 -->
+    <header class="bg-white border-b border-slate-200 h-16 flex items-center justify-between px-6 shrink-0 z-30">
+        <div class="flex items-center gap-3">
+            <div class="bg-indigo-600 text-white p-2 rounded-xl shadow-lg shadow-indigo-100">
+                <i class="fa-solid fa-gavel text-xl"></i>
+            </div>
+            <div>
+                <h1 class="text-lg font-bold text-slate-900 flex items-center gap-2">
+                    경매알리미 <span class="text-xs bg-indigo-100 text-indigo-800 px-2 py-0.5 rounded-full font-semibold">법원 경매 실시간 워치독</span>
+                </h1>
+                <p class="text-xs text-slate-500">대법원 경매 통계 × 네이버 실시간 뉴스 × AI 낙찰가 분석</p>
+            </div>
+        </div>
+        <div class="flex items-center gap-3">
+            <button onclick="openModal('settingsModal')" class="flex items-center gap-2 px-3 py-1.5 text-xs font-medium text-slate-600 bg-slate-100 rounded-lg hover:bg-slate-200 transition">
+                <i class="fa-solid fa-gear"></i> API 설정
+            </button>
+            <button onclick="openModal('alertModal')" class="flex items-center gap-2 px-4 py-1.5 text-xs font-semibold text-white bg-indigo-600 rounded-lg hover:bg-indigo-700 shadow-md transition">
+                <i class="fa-solid fa-bell"></i> 관심 경매 알림
+            </button>
+        </div>
+    </header>
+
+    <div class="flex-1 flex overflow-hidden">
+
+        <!-- 왼쪽 패널 -->
+        <aside class="w-full md:w-[480px] border-r border-slate-200 bg-white flex flex-col shrink-0 z-10 overflow-y-auto">
+
+            <!-- 검색 -->
+            <div class="p-4 border-b border-slate-100 sticky top-0 bg-white z-20">
+                <div class="relative">
+                    <i class="fa-solid fa-magnifying-glass absolute left-3.5 top-1/2 -translate-y-1/2 text-slate-400"></i>
+                    <input type="text" id="searchInput" placeholder="지역명, 아파트명, 사건번호로 경매물건 검색..."
+                        class="w-full pl-10 pr-24 py-2.5 bg-slate-50 hover:bg-slate-100 focus:bg-white border border-slate-200 focus:border-indigo-500 rounded-xl text-sm focus:outline-none transition"
+                        onkeypress="if(event.key==='Enter')handleSearch()">
+                    <button onclick="handleSearch()" class="absolute right-2 top-1/2 -translate-y-1/2 px-3 py-1 bg-slate-900 text-white text-xs font-medium rounded-lg hover:bg-slate-800 transition">검색</button>
+                </div>
+                <!-- 빠른 필터 -->
+                <div class="flex gap-2 mt-2.5">
+                    <button onclick="filterByType('apt')" class="text-[10px] bg-indigo-50 text-indigo-700 px-2.5 py-1 rounded-lg font-bold hover:bg-indigo-100 transition">아파트</button>
+                    <button onclick="filterByType('villa')" class="text-[10px] bg-rose-50 text-rose-700 px-2.5 py-1 rounded-lg font-bold hover:bg-rose-100 transition">빌라/다세대</button>
+                    <button onclick="filterByType('officetel')" class="text-[10px] bg-amber-50 text-amber-700 px-2.5 py-1 rounded-lg font-bold hover:bg-amber-100 transition">오피스텔</button>
+                    <button onclick="filterByType('land')" class="text-[10px] bg-emerald-50 text-emerald-700 px-2.5 py-1 rounded-lg font-bold hover:bg-emerald-100 transition">토지</button>
+                    <button onclick="filterByType('all')" class="text-[10px] bg-slate-100 text-slate-700 px-2.5 py-1 rounded-lg font-bold hover:bg-slate-200 transition">전체</button>
+                </div>
+            </div>
+
+            <div class="p-6 space-y-6">
+
+                <!-- 종합 통계 카드 -->
+                <div class="bg-gradient-to-br from-indigo-900 to-indigo-800 text-white p-5 rounded-2xl shadow-xl relative overflow-hidden">
+                    <div class="absolute -right-6 -bottom-6 text-white/5 text-8xl font-black">BID</div>
+                    <div class="flex items-center justify-between mb-2">
+                        <span class="text-xs bg-white/20 text-white/90 px-2.5 py-0.5 rounded-full font-medium" id="regionLabel">서울 전체</span>
+                        <span class="text-xs text-indigo-300">2026.06.23 기준</span>
+                    </div>
+                    <h2 class="text-xl font-black mb-3" id="regionTitle">서울특별시 경매 물건 현황</h2>
+
+                    <div class="grid grid-cols-3 gap-2">
+                        <div class="bg-white/10 rounded-xl p-2.5 text-center">
+                            <span class="text-[10px] text-indigo-300 block">진행중 물건</span>
+                            <span class="text-2xl font-black text-white" id="statActive">847</span>
+                            <span class="text-[9px] text-indigo-300 block">건</span>
+                        </div>
+                        <div class="bg-white/10 rounded-xl p-2.5 text-center">
+                            <span class="text-[10px] text-indigo-300 block">평균 낙찰가율</span>
+                            <span class="text-2xl font-black text-amber-400" id="statBidRate">78.3</span>
+                            <span class="text-[9px] text-indigo-300 block">%</span>
+                        </div>
+                        <div class="bg-white/10 rounded-xl p-2.5 text-center">
+                            <span class="text-[10px] text-indigo-300 block">유찰 물건</span>
+                            <span class="text-2xl font-black text-rose-400" id="statFailed">312</span>
+                            <span class="text-[9px] text-indigo-300 block">건</span>
+                        </div>
+                    </div>
+                </div>
+
+                <!-- 낙찰가율 시뮬레이터 -->
+                <div class="bg-slate-50 border border-slate-200 p-4 rounded-2xl space-y-4">
+                    <div class="flex items-center justify-between">
+                        <h4 class="text-xs font-bold text-slate-900 flex items-center gap-1.5">
+                            <i class="fa-solid fa-calculator text-indigo-600"></i> 낙찰가율 예측 시뮬레이터
+                        </h4>
+                        <span class="text-[10px] bg-indigo-100 text-indigo-800 px-1.5 py-0.5 rounded font-bold">실시간 계산</span>
+                    </div>
+                    <div class="space-y-1.5">
+                        <div class="flex justify-between text-[11px] font-medium text-slate-600">
+                            <span>감정가 (만원)</span>
+                            <span class="text-indigo-600 font-bold" id="valAppraisalText">50,000만원</span>
+                        </div>
+                        <input type="range" id="sliderAppraisal" min="5000" max="200000" value="50000" step="1000"
+                            class="w-full h-1.5 bg-slate-200 rounded-lg appearance-none cursor-pointer accent-indigo-600"
+                            oninput="updateBidSimulator()">
+                    </div>
+                    <div class="space-y-1.5">
+                        <div class="flex justify-between text-[11px] font-medium text-slate-600">
+                            <span>유찰 횟수</span>
+                            <span class="text-rose-600 font-bold" id="valFailCountText">0회</span>
+                        </div>
+                        <input type="range" id="sliderFailCount" min="0" max="5" value="0" step="1"
+                            class="w-full h-1.5 bg-slate-200 rounded-lg appearance-none cursor-pointer accent-indigo-600"
+                            oninput="updateBidSimulator()">
+                        <span class="text-[9px] text-slate-400 block">유찰 시 최저가 20% 하락 (1회: 80%, 2회: 64%, 3회: 51.2%)</span>
+                    </div>
+                    <div class="space-y-1.5">
+                        <div class="flex justify-between text-[11px] font-medium text-slate-600">
+                            <span>경쟁 입찰자 예상 수</span>
+                            <span class="text-amber-600 font-bold" id="valBiddersText">5명</span>
+                        </div>
+                        <input type="range" id="sliderBidders" min="1" max="30" value="5" step="1"
+                            class="w-full h-1.5 bg-slate-200 rounded-lg appearance-none cursor-pointer accent-indigo-600"
+                            oninput="updateBidSimulator()">
+                    </div>
+                    <!-- 시뮬레이션 결과 -->
+                    <div class="bg-indigo-50 border border-indigo-200 rounded-xl p-3 space-y-1">
+                        <div class="flex justify-between text-[11px]">
+                            <span class="text-slate-600">최저 입찰가</span>
+                            <span class="font-bold text-indigo-800" id="simMinBid">50,000만원</span>
+                        </div>
+                        <div class="flex justify-between text-[11px]">
+                            <span class="text-slate-600">예상 낙찰가 (AI 추정)</span>
+                            <span class="font-bold text-emerald-700" id="simExpectedBid">39,150만원</span>
+                        </div>
+                        <div class="flex justify-between text-[11px]">
+                            <span class="text-slate-600">시세 대비 할인율</span>
+                            <span class="font-bold text-rose-600" id="simDiscount">21.7%</span>
+                        </div>
+                    </div>
+                </div>
+
+                <!-- 경매 물건 리스트 -->
+                <div class="space-y-3">
+                    <div class="flex items-center justify-between">
+                        <h3 class="text-sm font-bold text-slate-800 flex items-center gap-1.5">
+                            <i class="fa-solid fa-list-check text-indigo-600"></i> 주요 경매 물건 (<span id="auctionListCount">6</span>건)
+                        </h3>
+                        <select id="sortSelector" onchange="sortAuctionList()" class="text-[10px] bg-slate-100 border border-slate-200 rounded px-2 py-0.5">
+                            <option value="date">매각기일순</option>
+                            <option value="price">감정가순</option>
+                            <option value="rate">낙찰가율순</option>
+                        </select>
+                    </div>
+                    <div class="space-y-2.5" id="auctionListContainer"></div>
+                </div>
+
+                <!-- 네이버 Datalab 트렌드 -->
+                <div class="space-y-3">
+                    <div class="flex items-center justify-between">
+                        <h3 class="text-sm font-bold text-slate-800 flex items-center gap-1.5">
+                            <i class="fa-solid fa-chart-line text-green-600"></i> 네이버 "경매" 검색 트렌드
+                        </h3>
+                        <button onclick="loadDatalabTrend()" class="text-[10px] bg-slate-100 hover:bg-slate-200 text-slate-700 px-2 py-0.5 rounded font-medium transition">
+                            <i class="fa-solid fa-refresh"></i> 새로고침
+                        </button>
+                    </div>
+                    <div id="datalabContainer" class="bg-slate-50 border border-slate-200 p-4 rounded-xl"></div>
+                </div>
+
+                <!-- 네이버 뉴스 피드 -->
+                <div class="space-y-3">
+                    <div class="flex items-center justify-between">
+                        <h3 class="text-sm font-bold text-slate-800 flex items-center gap-1.5">
+                            <i class="fa-solid fa-newspaper text-blue-600"></i> 경매 관련 실시간 뉴스
+                        </h3>
+                        <button onclick="loadNaverAuctionNews()" class="text-[10px] bg-blue-100 hover:bg-blue-200 text-blue-800 px-2 py-0.5 rounded font-bold transition" id="newsLoadBtn">
+                            <i class="fa-solid fa-satellite-dish"></i> 실시간 검색
+                        </button>
+                    </div>
+                    <div id="newsContainer" class="space-y-2.5"></div>
+                </div>
+            </div>
+        </aside>
+
+        <!-- 오른쪽 메인 -->
+        <main class="flex-1 flex flex-col overflow-hidden relative">
+
+            <div class="bg-white border-b border-slate-200 h-12 flex px-4 gap-6 shrink-0 z-20">
+                <button onclick="switchTab('mapTab')" id="btn-mapTab" class="border-b-2 border-indigo-600 text-indigo-600 px-3 text-sm font-bold flex items-center gap-1.5 transition">
+                    <i class="fa-solid fa-map-location-dot"></i> 경매 히트맵
+                </button>
+                <button onclick="switchTab('aiTab')" id="btn-aiTab" class="border-b-2 border-transparent text-slate-500 hover:text-slate-800 px-3 text-sm font-bold flex items-center gap-1.5 transition">
+                    <i class="fa-solid fa-wand-magic-sparkles text-purple-600"></i> AI 투자 분석기
+                </button>
+                <button onclick="switchTab('detailTab')" id="btn-detailTab" class="border-b-2 border-transparent text-slate-500 hover:text-slate-800 px-3 text-sm font-bold flex items-center gap-1.5 transition">
+                    <i class="fa-solid fa-file-contract text-amber-600"></i> 물건 상세 정보
+                </button>
+            </div>
+
+            <!-- 탭1: 지도 -->
+            <div id="tabContent-mapTab" class="flex-1 relative z-10">
+                <div id="map" class="w-full h-full"></div>
+                <div class="absolute bottom-6 right-6 bg-white/90 backdrop-blur border border-slate-200 p-4 rounded-xl shadow-lg z-[1000] max-w-xs text-xs space-y-2.5">
+                    <h4 class="font-bold text-slate-900">경매 물건 밀집도</h4>
+                    <div class="flex flex-col gap-1.5">
+                        <div class="flex items-center gap-2"><span class="w-3 h-3 rounded-full bg-rose-500 block"></span><span>고밀집 (10건+, 유찰 다수)</span></div>
+                        <div class="flex items-center gap-2"><span class="w-3 h-3 rounded-full bg-amber-500 block"></span><span>중밀집 (5~9건)</span></div>
+                        <div class="flex items-center gap-2"><span class="w-3 h-3 rounded-full bg-indigo-500 block"></span><span>저밀집 (1~4건)</span></div>
+                    </div>
+                </div>
+            </div>
+
+            <!-- 탭2: AI 분석 -->
+            <div id="tabContent-aiTab" class="flex-1 bg-slate-50 p-6 overflow-y-auto hidden">
+                <div class="max-w-3xl mx-auto space-y-6">
+                    <div class="bg-white border border-slate-200 rounded-2xl p-6 shadow-sm">
+                        <div class="flex items-center gap-3 mb-4">
+                            <div class="bg-indigo-100 text-indigo-700 w-10 h-10 rounded-xl flex items-center justify-center">
+                                <i class="fa-solid fa-robot text-lg"></i>
+                            </div>
+                            <div>
+                                <h3 class="font-bold text-slate-900">Gemini AI 경매 투자 분석</h3>
+                                <p class="text-xs text-slate-500">경매 물건 정보를 입력하면 투자 수익률, 리스크, 권리분석을 AI가 종합 판단합니다.</p>
+                            </div>
+                        </div>
+                        <div class="mb-4 flex flex-wrap gap-2">
+                            <button onclick="fillAuctionSample(1)" class="bg-slate-100 hover:bg-slate-200 text-slate-700 text-xs px-2.5 py-1.5 rounded-lg transition">
+                                아파트 경매 (감정가 8억, 유찰1회)
+                            </button>
+                            <button onclick="fillAuctionSample(2)" class="bg-slate-100 hover:bg-slate-200 text-slate-700 text-xs px-2.5 py-1.5 rounded-lg transition">
+                                빌라 경매 (선순위 세입자 有)
+                            </button>
+                            <button onclick="fillAuctionSample(3)" class="bg-slate-100 hover:bg-slate-200 text-slate-700 text-xs px-2.5 py-1.5 rounded-lg transition">
+                                상가 경매 (유치권 신고)
+                            </button>
+                        </div>
+                        <textarea id="aiInput" rows="6" placeholder="경매 물건 정보를 입력하세요.&#10;예: 사건번호 2026타경12345, 서울 강남구 아파트 84㎡, 감정가 12억, 1회 유찰, 선순위 근저당 8억, 임차인 2명(확정일자 有)..."
+                            class="w-full border border-slate-200 hover:border-slate-300 focus:border-indigo-500 rounded-xl p-4 text-sm focus:outline-none transition mb-4"></textarea>
+                        <button onclick="analyzeAuctionWithAI()" class="w-full bg-gradient-to-r from-indigo-600 to-purple-600 hover:from-indigo-700 hover:to-purple-700 text-white font-bold py-3 px-4 rounded-xl shadow-md flex items-center justify-center gap-2 transition">
+                            <i class="fa-solid fa-wand-magic-sparkles"></i> AI 경매 투자 분석 시작
+                        </button>
+                    </div>
+                    <div id="aiResultCard" class="bg-white border border-slate-200 rounded-2xl p-6 shadow-sm hidden">
+                        <div class="flex items-center justify-between border-b border-slate-100 pb-3 mb-4">
+                            <span class="text-xs bg-indigo-100 text-indigo-700 px-2.5 py-1 rounded-full font-bold"><i class="fa-solid fa-clipboard-check"></i> 투자 분석 보고서</span>
+                            <span class="text-xs text-slate-400">Gemini AI Engine</span>
+                        </div>
+                        <div id="aiResultContent" class="prose prose-slate max-w-full text-sm leading-relaxed"></div>
+                    </div>
+                </div>
+            </div>
+
+            <!-- 탭3: 물건 상세 -->
+            <div id="tabContent-detailTab" class="flex-1 bg-slate-50 p-6 overflow-y-auto hidden">
+                <div class="max-w-3xl mx-auto">
+                    <div id="detailContent" class="bg-white border border-slate-200 rounded-2xl p-6 shadow-sm">
+                        <div class="text-center py-16 text-slate-400">
+                            <i class="fa-solid fa-hand-pointer text-4xl block mb-3"></i>
+                            <p class="text-sm">왼쪽 경매 물건 리스트에서 물건을 클릭하면 상세 정보가 표시됩니다.</p>
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </main>
+    </div>
+
+    <!-- 설정 모달 -->
+    <div id="settingsModal" class="fixed inset-0 bg-black/50 z-[2000] flex items-center justify-center hidden">
+        <div class="bg-white w-full max-w-lg rounded-2xl shadow-xl p-6 mx-4 space-y-4 max-h-[90vh] overflow-y-auto">
+            <div class="flex items-center justify-between border-b border-slate-100 pb-3">
+                <h3 class="font-bold text-slate-900"><i class="fa-solid fa-key text-indigo-600"></i> API 키 설정</h3>
+                <button onclick="closeModal('settingsModal')" class="text-slate-400 hover:text-slate-600"><i class="fa-solid fa-times text-lg"></i></button>
+            </div>
+            <div>
+                <h4 class="text-xs font-bold text-slate-800 mb-2"><i class="fa-solid fa-n text-green-600"></i> 네이버 검색/Datalab API</h4>
+                <p class="text-[10px] text-slate-400 mb-2"><a href="https://developers.naver.com/apps/#/register" target="_blank" class="text-green-600 underline">developers.naver.com</a>에서 "검색" + "데이터랩" 선택 후 앱 등록</p>
+                <div class="space-y-2">
+                    <input type="text" id="naver_client_id" placeholder="Client ID" class="w-full border border-slate-200 rounded-lg px-3 py-1.5 text-[11px] font-mono focus:outline-none focus:border-green-500">
+                    <input type="password" id="naver_client_secret" placeholder="Client Secret" class="w-full border border-slate-200 rounded-lg px-3 py-1.5 text-[11px] font-mono focus:outline-none focus:border-green-500">
+                </div>
+            </div>
+            <div class="border-t border-slate-100 pt-3">
+                <div class="bg-indigo-50 border border-indigo-200 rounded-lg p-2.5 text-[10px] text-indigo-800">
+                    <i class="fa-solid fa-robot"></i> <b>AI 분석:</b> 내장 규칙 기반 엔진 탑재 — 외부 API 키 없이 즉시 분석 가능
+                </div>
+            </div>
+            <div class="flex gap-2">
+                <button onclick="saveAllKeys()" class="flex-1 bg-indigo-600 text-white font-bold py-2 rounded-xl text-xs hover:bg-indigo-700 transition"><i class="fa-solid fa-save"></i> 저장</button>
+                <button onclick="closeModal('settingsModal')" class="flex-1 bg-slate-200 text-slate-800 font-bold py-2 rounded-xl text-xs hover:bg-slate-300 transition">닫기</button>
+            </div>
+        </div>
+    </div>
+
+    <!-- 알림 모달 -->
+    <div id="alertModal" class="fixed inset-0 bg-black/50 z-[2000] flex items-center justify-center hidden">
+        <div class="bg-white w-full max-w-md rounded-2xl shadow-xl p-6 mx-4 space-y-4">
+            <div class="flex items-center justify-between border-b border-slate-100 pb-3">
+                <h3 class="font-bold text-slate-900"><i class="fa-solid fa-bell text-indigo-600"></i> 관심 경매 알림 설정</h3>
+                <button onclick="closeModal('alertModal')" class="text-slate-400 hover:text-slate-600"><i class="fa-solid fa-times text-lg"></i></button>
+            </div>
+            <div class="space-y-3">
+                <div>
+                    <label class="block text-xs font-bold text-slate-700 mb-1">관심 지역</label>
+                    <input type="text" placeholder="예: 강남구, 마포구, 부천시" class="w-full border border-slate-200 rounded-lg px-3 py-2 text-xs">
+                </div>
+                <div>
+                    <label class="block text-xs font-bold text-slate-700 mb-1">감정가 범위</label>
+                    <div class="flex gap-2">
+                        <input type="text" placeholder="최소 (만원)" class="flex-1 border border-slate-200 rounded-lg px-3 py-2 text-xs">
+                        <span class="text-slate-400 self-center">~</span>
+                        <input type="text" placeholder="최대 (만원)" class="flex-1 border border-slate-200 rounded-lg px-3 py-2 text-xs">
+                    </div>
+                </div>
+                <div>
+                    <label class="block text-xs font-bold text-slate-700 mb-1">물건 유형</label>
+                    <div class="flex gap-2 flex-wrap">
+                        <label class="text-xs flex items-center gap-1"><input type="checkbox" checked> 아파트</label>
+                        <label class="text-xs flex items-center gap-1"><input type="checkbox"> 빌라</label>
+                        <label class="text-xs flex items-center gap-1"><input type="checkbox"> 오피스텔</label>
+                        <label class="text-xs flex items-center gap-1"><input type="checkbox"> 상가</label>
+                        <label class="text-xs flex items-center gap-1"><input type="checkbox"> 토지</label>
+                    </div>
+                </div>
+            </div>
+            <button onclick="closeModal('alertModal');showToast('관심 경매 알림이 등록되었습니다!')" class="w-full bg-indigo-600 text-white font-bold py-2.5 rounded-xl text-xs hover:bg-indigo-700 transition">알림 등록</button>
+        </div>
+    </div>
+
+    <!-- 토스트 -->
+    <div id="toastMessage" class="fixed top-6 left-1/2 -translate-x-1/2 bg-slate-900 text-white px-5 py-3 rounded-xl text-xs font-bold shadow-2xl z-[3000] flex items-center gap-2 opacity-0 transition-opacity duration-300 pointer-events-none">
+        <i id="toastIcon" class="fa-solid fa-circle-info text-indigo-400 text-sm"></i>
+        <span id="toastText"></span>
+    </div>
+
+    <script>
+        // =========================================================================
+        // 상태 및 설정
+        // =========================================================================
+        let geminiKey = "";
+        const NAVER = { clientId: "", clientSecret: "", proxy: "https://corsproxy.io/?", searchBase: "https://openapi.naver.com/v1/search", datalabUrl: "https://openapi.naver.com/v1/datalab/search" };
+
+        const auctionDB = [
+            { id: "2026타경10234", court: "서울서부", region: "마포구", type: "apt", name: "마포래미안푸르지오 102동 1501호", area: "84.9㎡", appraisal: 112000, minBid: 89600, failCount: 1, bidDate: "2026.07.05", bidders: 8, status: "진행중", lat: 37.5535, lng: 126.9368, tenants: 1, mortgage: 65000, risk: "low",
+                detail: "2024년 근저당 설정(국민은행 6.5억). 임차인 1명(전세 4억, 확정일자 有). 감정 시점 대비 현 시세 약 11.5억 수준." },
+            { id: "2026타경11052", court: "서울남부", region: "강서구", type: "villa", name: "화곡동 303-15 다세대 301호", area: "59.2㎡", appraisal: 32000, minBid: 20480, failCount: 2, bidDate: "2026.07.02", bidders: 3, status: "진행중", lat: 37.5405, lng: 126.8395, tenants: 3, mortgage: 28000, risk: "high",
+                detail: "다중 채권자. 선순위 근저당 2.8억(저축은행). 임차인 3명 중 2명 미배당 예상. 유치권 미신고. 깡통 위험 高." },
+            { id: "2026타경10891", court: "서울중앙", region: "서초구", type: "apt", name: "반포자이 204동 801호", area: "115.7㎡", appraisal: 285000, minBid: 228000, failCount: 1, bidDate: "2026.07.10", bidders: 15, status: "진행중", lat: 37.5045, lng: 127.0125, tenants: 0, mortgage: 120000, risk: "low",
+                detail: "단독 근저당(하나은행 12억). 임차인 없음. 현 시세 약 30억. 낙찰가율 85%+ 예상." },
+            { id: "2026타경12567", court: "인천", region: "부평구", type: "officetel", name: "부평역 에이스 오피스텔 502호", area: "33.1㎡", appraisal: 15000, minBid: 9600, failCount: 2, bidDate: "2026.06.28", bidders: 2, status: "진행중", lat: 37.4919, lng: 126.7236, tenants: 1, mortgage: 13500, risk: "medium",
+                detail: "근저당 1.35억(저축은행 고금리). 임차인 월세(보증금 1000/월 45). 관리비 연체 3개월." },
+            { id: "2026타경13890", court: "수원", region: "영통구", type: "apt", name: "영통 삼성래미안 305동 1203호", area: "101.3㎡", appraisal: 78000, minBid: 78000, failCount: 0, bidDate: "2026.07.15", bidders: 12, status: "신건", lat: 37.2556, lng: 127.0728, tenants: 1, mortgage: 45000, risk: "low",
+                detail: "1순위 근저당(KB국민 4.5억). 임차인 전세 3억(확정일자 有, 대항력 有). 신건 1회차." },
+            { id: "2026타경14201", court: "서울동부", region: "송파구", type: "apt", name: "잠실엘스 109동 2304호", area: "119.9㎡", appraisal: 245000, minBid: 196000, failCount: 1, bidDate: "2026.07.08", bidders: 20, status: "진행중", lat: 37.5133, lng: 127.0860, tenants: 0, mortgage: 100000, risk: "low",
+                detail: "단독 근저당(신한 10억). 임차인 없음. 현 시세 25억+. 투자 매력도 최상." }
+        ];
+
+        let map, markerLayer, filteredList = [...auctionDB];
+
+        // =========================================================================
+        // 초기화
+        // =========================================================================
+        window.onload = function() {
+            map = L.map('map', { center: [37.50, 126.98], zoom: 11 });
+            L.tileLayer('https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png', { attribution: '&copy; OSM' }).addTo(map);
+            markerLayer = L.layerGroup().addTo(map);
+
+            const savedId = localStorage.getItem('auction_naver_id');
+            const savedSecret = localStorage.getItem('auction_naver_secret');
+            const savedGemini = localStorage.getItem('auction_gemini_key');
+            if (savedId) { NAVER.clientId = savedId; document.getElementById('naver_client_id').value = savedId; }
+            if (savedSecret) { NAVER.clientSecret = savedSecret; document.getElementById('naver_client_secret').value = savedSecret; }
+            if (savedGemini) { geminiKey = savedGemini; document.getElementById('gemini_api_key').value = savedGemini; }
+
+            renderAuctionList(auctionDB);
+            updateMapMarkers(auctionDB);
+            renderDatalabMock();
+            renderMockNews();
+            updateBidSimulator();
+        };
+
+        // =========================================================================
+        // 지도 마커
+        // =========================================================================
+        function updateMapMarkers(items) {
+            markerLayer.clearLayers();
+
+            items.forEach(item => {
+                let color = "bg-indigo-500";
+                if (item.risk === "high") color = "bg-rose-500 bid-pulse";
+                else if (item.risk === "medium") color = "bg-amber-500";
+
+                const icon = L.divIcon({
+                    html: `<div class="flex flex-col items-center">
+                        <span class="flex h-4 w-4 relative"><span class="animate-ping absolute inline-flex h-full w-full rounded-full ${color} opacity-75"></span><span class="relative inline-flex rounded-full h-4 w-4 ${color}"></span></span>
+                        <div class="bg-slate-900 text-white text-[9px] font-bold px-1.5 py-0.5 rounded shadow mt-1 whitespace-nowrap max-w-[120px] truncate">${item.name.split(' ')[0]} ${(item.appraisal/10000).toFixed(0)}억</div>
+                    </div>`,
+                    className: '', iconSize: [80, 40]
+                });
+                const m = L.marker([item.lat, item.lng], { icon }).addTo(markerLayer);
+                m.on('click', () => showDetail(item));
+            });
+        }
+
+        // =========================================================================
+        // 경매 물건 리스트
+        // =========================================================================
+        function renderAuctionList(items) {
+            const container = document.getElementById("auctionListContainer");
+            document.getElementById("auctionListCount").innerText = items.length;
+            container.innerHTML = "";
+            items.forEach(item => {
+                const riskBadge = item.risk === "high"
+                    ? `<span class="bg-rose-100 text-rose-700 text-[10px] font-bold px-1.5 py-0.5 rounded-full">위험</span>`
+                    : item.risk === "medium"
+                    ? `<span class="bg-amber-100 text-amber-700 text-[10px] font-bold px-1.5 py-0.5 rounded-full">주의</span>`
+                    : `<span class="bg-emerald-100 text-emerald-700 text-[10px] font-bold px-1.5 py-0.5 rounded-full">양호</span>`;
+                const typeBadge = { apt: "아파트", villa: "빌라", officetel: "오피스텔", land: "토지" }[item.type] || item.type;
+                const borderColor = item.risk === "high" ? "border-l-rose-500" : item.risk === "medium" ? "border-l-amber-500" : "border-l-indigo-500";
+
+                const card = document.createElement("div");
+                card.className = `bg-white border border-slate-200/80 p-3.5 rounded-xl shadow-sm border-l-4 ${borderColor} hover:shadow-md transition cursor-pointer`;
+                card.onclick = () => showDetail(item);
+                card.innerHTML = `
+                    <div class="flex items-center justify-between mb-1.5">
+                        <div class="flex items-center gap-1.5">${riskBadge}<span class="bg-slate-100 text-slate-600 text-[10px] font-bold px-1.5 py-0.5 rounded-full">${typeBadge}</span></div>
+                        <span class="text-[10px] text-slate-400">${item.bidDate} 매각</span>
+                    </div>
+                    <h4 class="text-xs font-bold text-slate-800 mb-1">${item.name}</h4>
+                    <p class="text-[10px] text-slate-500 mb-2">${item.id} | ${item.court}지법 | ${item.area}</p>
+                    <div class="flex gap-3 text-[10px]">
+                        <span class="text-slate-600">감정가 <b class="text-slate-900">${(item.appraisal/10000).toFixed(1)}억</b></span>
+                        <span class="text-slate-600">최저가 <b class="text-indigo-700">${(item.minBid/10000).toFixed(1)}억</b></span>
+                        <span class="text-slate-600">유찰 <b class="text-rose-600">${item.failCount}회</b></span>
+                        <span class="text-slate-600">입찰 <b>${item.bidders}명</b></span>
+                    </div>
+                `;
+                container.appendChild(card);
+            });
+        }
+
+        function showDetail(item) {
+            switchTab('detailTab');
+            const riskLabel = item.risk === "high" ? "위험" : item.risk === "medium" ? "주의" : "양호";
+            const riskColor = item.risk === "high" ? "text-rose-600" : item.risk === "medium" ? "text-amber-600" : "text-emerald-600";
+            const minBidRate = ((item.minBid / item.appraisal) * 100).toFixed(1);
+
+            document.getElementById("detailContent").innerHTML = `
+                <div class="space-y-5">
+                    <div class="flex items-center justify-between border-b border-slate-100 pb-4">
+                        <div>
+                            <h2 class="text-lg font-black text-slate-900">${item.name}</h2>
+                            <p class="text-xs text-slate-500">${item.id} | ${item.court}지방법원 | ${item.area}</p>
+                        </div>
+                        <span class="text-2xl font-black ${riskColor}">${riskLabel}</span>
+                    </div>
+                    <div class="grid grid-cols-2 gap-3">
+                        <div class="bg-slate-50 p-3 rounded-xl"><span class="text-[10px] text-slate-500 block">감정가</span><span class="text-lg font-bold">${(item.appraisal/10000).toFixed(1)}억</span></div>
+                        <div class="bg-slate-50 p-3 rounded-xl"><span class="text-[10px] text-slate-500 block">최저입찰가</span><span class="text-lg font-bold text-indigo-700">${(item.minBid/10000).toFixed(1)}억 (${minBidRate}%)</span></div>
+                        <div class="bg-slate-50 p-3 rounded-xl"><span class="text-[10px] text-slate-500 block">유찰 횟수</span><span class="text-lg font-bold text-rose-600">${item.failCount}회</span></div>
+                        <div class="bg-slate-50 p-3 rounded-xl"><span class="text-[10px] text-slate-500 block">매각기일</span><span class="text-lg font-bold">${item.bidDate}</span></div>
+                        <div class="bg-slate-50 p-3 rounded-xl"><span class="text-[10px] text-slate-500 block">임차인</span><span class="text-lg font-bold">${item.tenants}명</span></div>
+                        <div class="bg-slate-50 p-3 rounded-xl"><span class="text-[10px] text-slate-500 block">근저당 합계</span><span class="text-lg font-bold">${(item.mortgage/10000).toFixed(1)}억</span></div>
+                    </div>
+                    <div class="bg-indigo-50 border border-indigo-200 p-4 rounded-xl">
+                        <h4 class="text-xs font-bold text-indigo-800 mb-2"><i class="fa-solid fa-file-lines"></i> 물건 상세 분석</h4>
+                        <p class="text-xs text-slate-700 leading-relaxed">${item.detail}</p>
+                    </div>
+                    <button onclick="prefillAuctionAI('${item.id}')"
+                        class="w-full bg-gradient-to-r from-indigo-600 to-purple-600 text-white font-bold py-2.5 rounded-xl text-xs hover:from-indigo-700 transition">
+                        <i class="fa-solid fa-wand-magic-sparkles"></i> 이 물건 AI 투자 분석하기
+                    </button>
+                </div>
+            `;
+        }
+
+        // =========================================================================
+        // 낙찰가율 시뮬레이터
+        // =========================================================================
+        function updateBidSimulator() {
+            const appraisal = parseInt(document.getElementById("sliderAppraisal").value);
+            const failCount = parseInt(document.getElementById("sliderFailCount").value);
+            const bidders = parseInt(document.getElementById("sliderBidders").value);
+
+            document.getElementById("valAppraisalText").innerText = `${appraisal.toLocaleString()}만원`;
+            document.getElementById("valFailCountText").innerText = `${failCount}회`;
+            document.getElementById("valBiddersText").innerText = `${bidders}명`;
+
+            const minBidRate = Math.pow(0.8, failCount);
+            const minBid = Math.round(appraisal * minBidRate);
+            const competitionFactor = Math.min(1 + (bidders - 1) * 0.02, 1.3);
+            const expectedBid = Math.round(minBid * competitionFactor);
+            const discount = ((1 - expectedBid / appraisal) * 100).toFixed(1);
+
+            document.getElementById("simMinBid").innerText = `${minBid.toLocaleString()}만원 (${(minBidRate*100).toFixed(0)}%)`;
+            document.getElementById("simExpectedBid").innerText = `${expectedBid.toLocaleString()}만원`;
+            document.getElementById("simDiscount").innerText = `${discount}% 할인`;
+        }
+
+        // =========================================================================
+        // 필터/검색/정렬
+        // =========================================================================
+        function filterByType(type) {
+            filteredList = type === 'all' ? [...auctionDB] : auctionDB.filter(i => i.type === type);
+            renderAuctionList(filteredList);
+            updateMapMarkers(filteredList);
+            showToast(`${type === 'all' ? '전체' : type} 물건 ${filteredList.length}건 표시`);
+        }
+
+        function handleSearch() {
+            const q = document.getElementById("searchInput").value.trim().toLowerCase();
+            if (!q) { filteredList = [...auctionDB]; } else {
+                filteredList = auctionDB.filter(i => i.name.includes(q) || i.region.includes(q) || i.id.includes(q));
+            }
+            renderAuctionList(filteredList);
+            updateMapMarkers(filteredList);
+        }
+
+        function sortAuctionList() {
+            const sort = document.getElementById("sortSelector").value;
+            if (sort === 'price') filteredList.sort((a,b) => b.appraisal - a.appraisal);
+            else if (sort === 'rate') filteredList.sort((a,b) => (a.minBid/a.appraisal) - (b.minBid/b.appraisal));
+            else filteredList.sort((a,b) => a.bidDate.localeCompare(b.bidDate));
+            renderAuctionList(filteredList);
+        }
+
+        // =========================================================================
+        // 네이버 API
+        // =========================================================================
+        async function naverFetch(endpoint, params = {}) {
+            const qs = new URLSearchParams(params).toString();
+            const url = `${NAVER.proxy}${encodeURIComponent(`${endpoint}?${qs}`)}`;
+            const res = await fetch(url, { headers: { "X-Naver-Client-Id": NAVER.clientId, "X-Naver-Client-Secret": NAVER.clientSecret } });
+            if (!res.ok) throw new Error(`HTTP ${res.status}`);
+            return res.json();
+        }
+
+        async function loadNaverAuctionNews() {
+            if (!NAVER.clientId) { showToast("네이버 API 키를 먼저 설정하세요.", "fa-exclamation-circle", "text-amber-400"); renderMockNews(); return; }
+            const container = document.getElementById("newsContainer");
+            container.innerHTML = `<div class="skeleton h-16 w-full"></div><div class="skeleton h-16 w-full mt-2"></div>`;
+            try {
+                const [news, blog] = await Promise.allSettled([
+                    naverFetch(`${NAVER.searchBase}/news.json`, { query: "법원 경매 낙찰", display: 3, sort: "date" }),
+                    naverFetch(`${NAVER.searchBase}/blog.json`, { query: "경매 투자 후기", display: 3, sort: "date" })
+                ]);
+                const items = [];
+                if (news.status === "fulfilled") news.value.items?.forEach(i => items.push({ ...i, src: "뉴스" }));
+                if (blog.status === "fulfilled") blog.value.items?.forEach(i => items.push({ ...i, src: "블로그" }));
+                renderNewsItems(items);
+                showToast(`경매 뉴스 ${items.length}건 수집 완료`);
+            } catch(e) { renderMockNews(); showToast("API 오류, 시뮬레이션 표시", "fa-exclamation-circle", "text-amber-400"); }
+        }
+
+        function renderNewsItems(items) {
+            const container = document.getElementById("newsContainer");
+            container.innerHTML = "";
+            items.forEach(item => {
+                const title = (item.title||"").replace(/<[^>]*>/g,"");
+                const desc = (item.description||"").replace(/<[^>]*>/g,"");
+                const card = document.createElement("div");
+                card.className = "bg-white border border-slate-200 p-3 rounded-xl hover:shadow-md transition cursor-pointer";
+                card.onclick = () => window.open(item.link || item.originallink, "_blank");
+                card.innerHTML = `<div class="flex items-center justify-between mb-1"><span class="bg-blue-100 text-blue-700 text-[10px] font-bold px-1.5 py-0.5 rounded-full">${item.src}</span><span class="text-[10px] text-slate-400">${formatDate(item.pubDate||item.postdate)}</span></div><h4 class="text-xs font-bold text-slate-800 mb-1">${title}</h4><p class="text-[10px] text-slate-500 line-clamp-2">${desc}</p>`;
+                container.appendChild(card);
+            });
+        }
+
+        function renderMockNews() {
+            const mockItems = [
+                { title: "서울 아파트 경매 낙찰가율 80% 돌파...투자 열기 재점화", description: "서울 주요 아파트 경매 낙찰가율이 80%를 넘어서며 경매 시장에 다시 투자자가 몰리고 있다.", pubDate: "2026.06.23", src: "뉴스", link: "#" },
+                { title: "수도권 빌라 경매 물건 급증...깡통전세 여파 지속", description: "전세사기 여파로 수도권 빌라 경매 물건이 전년 대비 45% 증가. 낙찰가율은 60%대로 저조.", pubDate: "2026.06.22", src: "뉴스", link: "#" },
+                { title: "[경매 투자] 유찰 2회 아파트 낙찰 후기 - 시세 30% 할인", description: "강남 인근 아파트 유찰 2회 물건 낙찰받은 후기. 권리분석과 명도 과정 상세 공유.", pubDate: "2026.06.21", src: "블로그", link: "#" },
+                { title: "법원 경매 초보 가이드: 입찰부터 명도까지", description: "경매 절차, 권리분석, 배당 순위, 명도 방법까지 초보자 눈높이 설명.", pubDate: "2026.06.20", src: "블로그", link: "#" }
+            ];
+            renderNewsItems(mockItems);
+        }
+
+        function formatDate(d) { if (!d) return ""; try { if (d.length===8) return `${d.slice(0,4)}.${d.slice(4,6)}.${d.slice(6,8)}`; const dt=new Date(d); return isNaN(dt)?"":(`${dt.getFullYear()}.${String(dt.getMonth()+1).padStart(2,'0')}.${String(dt.getDate()).padStart(2,'0')}`); } catch{return d;} }
+
+        // Datalab
+        async function loadDatalabTrend() {
+            if (!NAVER.clientId) { renderDatalabMock(); return; }
+            const container = document.getElementById("datalabContainer");
+            container.innerHTML = `<div class="skeleton h-24 w-full"></div>`;
+            try {
+                const end = new Date(), start = new Date(); start.setDate(start.getDate()-90);
+                const fmt = d => `${d.getFullYear()}-${String(d.getMonth()+1).padStart(2,'0')}-${String(d.getDate()).padStart(2,'0')}`;
+                const res = await fetch(`${NAVER.proxy}${encodeURIComponent(NAVER.datalabUrl)}`, {
+                    method:"POST", headers:{"Content-Type":"application/json","X-Naver-Client-Id":NAVER.clientId,"X-Naver-Client-Secret":NAVER.clientSecret},
+                    body:JSON.stringify({ startDate:fmt(start), endDate:fmt(end), timeUnit:"week",
+                        keywordGroups:[{groupName:"법원경매",keywords:["법원경매","부동산경매"]},{groupName:"경매낙찰",keywords:["경매 낙찰","낙찰가율"]},{groupName:"공매",keywords:["공매","캠코 공매"]}]
+                    })
+                });
+                if (!res.ok) throw new Error();
+                const data = await res.json();
+                renderDatalabData(data);
+            } catch { renderDatalabMock(); }
+        }
+
+        function renderDatalabData(result) {
+            const container = document.getElementById("datalabContainer");
+            const colors = ["bg-indigo-500","bg-amber-500","bg-emerald-500"];
+            if (!result?.results) { renderDatalabMock(); return; }
+            let html = `<div class="space-y-2.5">`;
+            result.results.forEach((g,i) => {
+                const last = g.data?.slice(-4)||[];
+                const max = Math.max(...last.map(d=>d.ratio),1);
+                const cur = last.length?last[last.length-1].ratio:0;
+                const prev = last.length>1?last[last.length-2].ratio:cur;
+                const t = cur>prev?"↑":cur<prev?"↓":"→";
+                const tc = cur>prev?"text-rose-600":"text-emerald-600";
+                html += `<div><div class="flex justify-between mb-1"><span class="text-[11px] font-bold text-slate-700">${g.title}</span><span class="text-[10px] font-bold ${tc}">${t} ${cur.toFixed(1)}</span></div><div class="flex gap-0.5 h-4 items-end">${last.map(d=>`<div class="${colors[i]} rounded-sm" style="width:25%;height:${Math.max(d.ratio/max*100,5)}%"></div>`).join('')}</div></div>`;
+            });
+            html += `</div>`;
+            container.innerHTML = html;
+        }
+
+        function renderDatalabMock() {
+            const kw = [{n:"법원경매",v:72,t:"↑",c:"bg-indigo-500"},{n:"경매 낙찰가율",v:58,t:"↓",c:"bg-amber-500"},{n:"캠코 공매",v:35,t:"→",c:"bg-emerald-500"}];
+            let html = `<div class="space-y-2.5">`;
+            kw.forEach(k => { html += `<div><div class="flex justify-between mb-1"><span class="text-[11px] font-bold text-slate-700">${k.n}</span><span class="text-[10px] font-bold ${k.t==='↑'?'text-rose-600':'text-slate-500'}">${k.t} ${k.v}</span></div><div class="w-full bg-slate-200 rounded-full h-2"><div class="${k.c} h-2 rounded-full trend-bar" style="width:${k.v}%"></div></div></div>`; });
+            html += `<p class="text-[9px] text-slate-400 text-center mt-1">시뮬레이션 데이터 (API 키 설정 시 실시간)</p></div>`;
+            const container = document.getElementById("datalabContainer");
+            container.innerHTML = html;
+        }
+
+        // =========================================================================
+        // AI 분석
+        // =========================================================================
+        function prefillAuctionAI(itemId) {
+            const item = auctionDB.find(i => i.id === itemId);
+            if (!item) return;
+            document.getElementById('aiInput').value = `${item.id} ${item.name}, 감정가 ${item.appraisal}만원, 유찰 ${item.failCount}회, 근저당 ${item.mortgage}만원, 임차인 ${item.tenants}명. ${item.detail}`;
+            switchTab('aiTab');
+        }
+
+        async function analyzeAuctionWithAI() {
+            const input = document.getElementById("aiInput").value.trim();
+            if (!input) { showToast("분석할 경매 물건 정보를 입력하세요.", "fa-exclamation-circle", "text-rose-400"); return; }
+            const card = document.getElementById("aiResultCard");
+            const content = document.getElementById("aiResultContent");
+            card.classList.remove("hidden");
+            content.innerHTML = `<div class="flex flex-col items-center py-8"><div class="relative w-12 h-12"><div class="absolute inset-0 border-4 border-indigo-200 rounded-full"></div><div class="absolute inset-0 border-4 border-indigo-600 rounded-full border-t-transparent animate-spin"></div></div><p class="text-xs font-bold text-slate-900 mt-4">내장 AI 엔진이 분석 중...</p></div>`;
+            await new Promise(r => setTimeout(r, 600));
+            content.innerHTML = marked.parse(analyzeAuctionLocal(input));
+            showToast("경매 투자 분석 완료!", "fa-circle-check", "text-indigo-400");
+        }
+
+        function analyzeAuctionLocal(text) {
+            const t = text.toLowerCase();
+            const risks = [], goods = [];
+            let grade = "B", gradeLabel = "보통";
+
+            // 감정가 추출
+            const appraisalMatch = text.match(/감정가\s*([\d.]+)\s*억/);
+            const appraisal = appraisalMatch ? parseFloat(appraisalMatch[1]) : 0;
+            const failMatch = text.match(/유찰\s*(\d+)\s*회/);
+            const fails = failMatch ? parseInt(failMatch[1]) : 0;
+            const mortgageMatch = text.match(/근저당\s*([\d.]+)\s*억/);
+            const mortgage = mortgageMatch ? parseFloat(mortgageMatch[1]) : 0;
+            const tenantMatch = text.match(/임차인\s*(\d+)\s*명/);
+            const tenants = tenantMatch ? parseInt(tenantMatch[1]) : 0;
+
+            const minBidRate = Math.pow(0.8, fails);
+            const minBid = appraisal ? (appraisal * minBidRate).toFixed(1) : "미산출";
+
+            if (mortgage && appraisal && mortgage / appraisal > 0.8) risks.push(`근저당 비율 ${((mortgage/appraisal)*100).toFixed(0)}% — 감정가 대비 과다 설정 (깡통 위험)`);
+            if (t.includes("저축은행") || t.includes("사채") || t.includes("고금리")) risks.push("제2금융권/저축은행 대출 — 임대인 신용 불량 가능성");
+            if (tenants >= 3) risks.push(`임차인 ${tenants}명 — 다수 임차인 배당 분쟁 가능성 높음`);
+            if (t.includes("미배당")) risks.push("미배당 예상 임차인 존재 — 명도 저항 가능성 극히 높음");
+            if (t.includes("유치권")) risks.push("유치권 신고 — 명도 불가 및 소송 리스크 (최대 위험 요소)");
+            if (t.includes("깡통")) risks.push("깡통전세 의심 물건 — 낙찰가 이하 배당 불가 위험");
+            if (fails === 0) goods.push("신건(1회차) — 경쟁 치열 예상이나 물건 상태 양호");
+            if (fails >= 2) goods.push(`${fails}회 유찰 — 최저가 ${(minBidRate*100).toFixed(0)}%까지 하락, 할인 매수 기회`);
+            if (tenants === 0) goods.push("임차인 없음 — 명도 부담 제로, 즉시 입주/임대 가능");
+            if (t.includes("확정일자 유") || t.includes("확정일자 有")) goods.push("임차인 확정일자 有 — 배당 순위 명확, 권리관계 안정");
+            if (appraisal >= 10 && mortgage / appraisal < 0.6) goods.push("근저당 비율 건전 — 감정가 대비 안전 마진 존재");
+
+            if (risks.length >= 3) { grade = "D"; gradeLabel = "고위험"; }
+            else if (risks.length >= 2) { grade = "C"; gradeLabel = "주의"; }
+            else if (risks.length <= 1 && goods.length >= 2) { grade = "A"; gradeLabel = "양호"; }
+            if (risks.length === 0 && goods.length >= 3) { grade = "S"; gradeLabel = "최우수"; }
+
+            let r = `## 투자 등급: **${grade}** (${gradeLabel})\n\n`;
+            r += `---\n\n### 1. 물건 요약\n\n`;
+            r += `| 항목 | 값 |\n|---|---|\n`;
+            if (appraisal) r += `| 감정가 | ${appraisal}억 |\n`;
+            r += `| 유찰 | ${fails}회 (최저가율 ${(minBidRate*100).toFixed(0)}%) |\n`;
+            if (appraisal) r += `| 최저입찰가 | ${minBid}억 |\n`;
+            if (mortgage) r += `| 근저당 합계 | ${mortgage}억 |\n`;
+            r += `| 임차인 | ${tenants}명 |\n\n`;
+
+            if (risks.length) {
+                r += `### 2. 위험 요소 (${risks.length}건)\n\n`;
+                risks.forEach(x => r += `- 🔴 **${x}**\n`);
+                r += `\n`;
+            }
+            if (goods.length) {
+                r += `### 3. 긍정 요소 (${goods.length}건)\n\n`;
+                goods.forEach(x => r += `- 🟢 ${x}\n`);
+                r += `\n`;
+            }
+
+            r += `### 4. 예상 낙찰가\n\n`;
+            if (appraisal) {
+                const expectedRate = fails === 0 ? 0.85 : fails === 1 ? 0.78 : 0.72;
+                const expected = (appraisal * expectedRate).toFixed(1);
+                r += `- 예상 낙찰가율: **${(expectedRate*100).toFixed(0)}%**\n`;
+                r += `- 예상 낙찰가: **${expected}억**\n`;
+                r += `- 감정가 대비 할인율: **${((1-expectedRate)*100).toFixed(0)}%**\n\n`;
+            }
+
+            r += `### 5. 명도 난이도\n\n`;
+            if (tenants === 0) r += `- ✅ **쉬움** — 임차인 없음, 즉시 입주 가능\n\n`;
+            else if (t.includes("미배당") || t.includes("유치권")) r += `- 🔴 **매우 어려움** — 명도소송 3~12개월 + 강제집행 비용 예상\n\n`;
+            else r += `- 🟡 **보통** — 임차인 ${tenants}명 협의 명도 필요 (예상 2~4개월)\n\n`;
+
+            r += `### 6. 투자 체크리스트\n\n`;
+            r += `- [ ] 등기부등본 갑구/을구 전체 확인\n`;
+            r += `- [ ] 말소기준권리 확인 (최선순위 설정일)\n`;
+            r += `- [ ] 임차인 배당 예상액 산출\n`;
+            r += `- [ ] 현장 답사 및 점유관계 확인\n`;
+            r += `- [ ] 관리비/공과금 체납 확인\n`;
+            r += `- [ ] 시세 조사 (실거래가, KB시세)\n\n`;
+            r += `---\n*내장 경매 분석 엔진 v1.0*`;
+            return r;
+        }
+
+        function fillAuctionSample(n) {
+            const samples = {
+                1: "사건번호 2026타경10234, 서울 마포구 마포래미안푸르지오 84.9㎡, 감정가 11.2억, 1회 유찰(최저가 8.96억), 근저당 6.5억(KB국민은행), 임차인 1명(전세 4억 확정일자 有). 현 시세 약 11.5억.",
+                2: "사건번호 2026타경11052, 서울 강서구 화곡동 빌라 59.2㎡, 감정가 3.2억, 2회 유찰(최저가 2.048억), 근저당 2.8억(저축은행), 임차인 3명 중 2명 미배당 예상. 깡통전세 의심 물건.",
+                3: "사건번호 2026타경15000, 서울 영등포구 상가 132㎡, 감정가 8억, 유찰 없음, 근저당 5억, 유치권 신고 1건(인테리어 공사비 8천만원 주장). 현 임차인 음식점 운영 중."
+            };
+            document.getElementById("aiInput").value = samples[n];
+            showToast("샘플 데이터 입력 완료");
+        }
+
+        // =========================================================================
+        // 공통 유틸
+        // =========================================================================
+        function switchTab(id) {
+            ["mapTab","aiTab","detailTab"].forEach(t => {
+                document.getElementById(`tabContent-${t}`).classList.add("hidden");
+                document.getElementById(`btn-${t}`).className = "border-b-2 border-transparent text-slate-500 hover:text-slate-800 px-3 text-sm font-bold flex items-center gap-1.5 transition";
+            });
+            document.getElementById(`tabContent-${id}`).classList.remove("hidden");
+            const c = {mapTab:"indigo",aiTab:"purple",detailTab:"amber"}[id];
+            document.getElementById(`btn-${id}`).className = `border-b-2 border-${c}-600 text-${c}-600 px-3 text-sm font-bold flex items-center gap-1.5 transition`;
+            if (id==='mapTab') setTimeout(()=>{if(map)map.invalidateSize();},100);
+        }
+
+        function saveAllKeys() {
+            NAVER.clientId = document.getElementById("naver_client_id").value.trim();
+            NAVER.clientSecret = document.getElementById("naver_client_secret").value.trim();
+            geminiKey = document.getElementById("gemini_api_key").value.trim();
+            if (NAVER.clientId) localStorage.setItem('auction_naver_id', NAVER.clientId);
+            if (NAVER.clientSecret) localStorage.setItem('auction_naver_secret', NAVER.clientSecret);
+            if (geminiKey) localStorage.setItem('auction_gemini_key', geminiKey);
+            showToast("API 키 저장 완료!"); closeModal('settingsModal');
+            if (NAVER.clientId) { loadNaverAuctionNews(); loadDatalabTrend(); }
+        }
+
+        function openModal(id) { document.getElementById(id).classList.remove("hidden"); }
+        function closeModal(id) { document.getElementById(id).classList.add("hidden"); }
+        function showToast(msg, icon="fa-circle-info", color="text-indigo-400") {
+            const t = document.getElementById("toastMessage");
+            document.getElementById("toastIcon").className = `fa-solid ${icon} ${color} text-sm`;
+            document.getElementById("toastText").innerText = msg;
+            t.classList.remove("opacity-0"); t.classList.add("opacity-100");
+            setTimeout(()=>{t.classList.remove("opacity-100");t.classList.add("opacity-0");},3000);
+        }
+    </script>
+</body>
+</html>

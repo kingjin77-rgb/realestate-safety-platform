@@ -1,0 +1,795 @@
+<!DOCTYPE html>
+<html lang="ko">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>법인체크 — 임대인 법인 건전성 분석기</title>
+    <script src="https://cdn.tailwindcss.com"></script>
+    <link href="https://fonts.googleapis.com/css2?family=Noto+Sans+KR:wght@300;400;500;700;900&display=swap" rel="stylesheet">
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css">
+    <script src="https://cdn.jsdelivr.net/npm/marked/marked.min.js"></script>
+    <style>
+        body { font-family: 'Noto Sans KR', sans-serif; }
+        ::-webkit-scrollbar { width: 6px; }
+        ::-webkit-scrollbar-track { background: #f1f5f9; }
+        ::-webkit-scrollbar-thumb { background: #cbd5e1; border-radius: 4px; }
+        @keyframes shimmer { 0%{background-position:-200% 0} 100%{background-position:200% 0} }
+        .skeleton { background:linear-gradient(90deg,#e2e8f0 25%,#f1f5f9 50%,#e2e8f0 75%); background-size:200% 100%; animation:shimmer 1.5s infinite; border-radius:8px; }
+        .gauge-fill { transition: width 0.8s ease-out; }
+    </style>
+</head>
+<body class="bg-slate-50 text-slate-800 h-screen flex flex-col overflow-hidden">
+
+    <!-- 헤더 -->
+    <header class="bg-white border-b border-slate-200 h-16 flex items-center justify-between px-6 shrink-0 z-30">
+        <div class="flex items-center gap-3">
+            <div class="bg-orange-600 text-white p-2 rounded-xl shadow-lg shadow-orange-100">
+                <i class="fa-solid fa-building-shield text-xl"></i>
+            </div>
+            <div>
+                <h1 class="text-lg font-bold text-slate-900 flex items-center gap-2">
+                    법인체크 <span class="text-xs bg-orange-100 text-orange-800 px-2 py-0.5 rounded-full font-semibold">임대인 법인 건전성 분석기</span>
+                </h1>
+                <p class="text-xs text-slate-500">DART 공시 × 법인등기 × 네이버 뉴스 × AI 종합 진단</p>
+            </div>
+        </div>
+        <div class="flex items-center gap-3">
+            <button onclick="openModal('settingsModal')" class="flex items-center gap-2 px-3 py-1.5 text-xs font-medium text-slate-600 bg-slate-100 rounded-lg hover:bg-slate-200 transition">
+                <i class="fa-solid fa-gear"></i> API 설정
+            </button>
+        </div>
+    </header>
+
+    <div class="flex-1 flex overflow-hidden">
+
+        <!-- 왼쪽: 검색 + 법인 리스트 -->
+        <aside class="w-full md:w-[440px] border-r border-slate-200 bg-white flex flex-col shrink-0 z-10 overflow-y-auto">
+
+            <!-- 법인 검색 -->
+            <div class="p-4 border-b border-slate-100 sticky top-0 bg-white z-20">
+                <div class="relative">
+                    <i class="fa-solid fa-magnifying-glass absolute left-3.5 top-1/2 -translate-y-1/2 text-slate-400"></i>
+                    <input type="text" id="searchInput" placeholder="법인명 또는 사업자등록번호로 검색..."
+                        class="w-full pl-10 pr-24 py-2.5 bg-slate-50 hover:bg-slate-100 focus:bg-white border border-slate-200 focus:border-orange-500 rounded-xl text-sm focus:outline-none transition"
+                        onkeypress="if(event.key==='Enter')handleSearch()">
+                    <button onclick="handleSearch()" class="absolute right-2 top-1/2 -translate-y-1/2 px-3 py-1 bg-slate-900 text-white text-xs font-medium rounded-lg hover:bg-slate-800 transition">검색</button>
+                </div>
+                <div class="flex gap-2 mt-2">
+                    <button onclick="filterRisk('all')" class="text-[10px] bg-slate-100 text-slate-700 px-2.5 py-1 rounded-lg font-bold hover:bg-slate-200 transition">전체</button>
+                    <button onclick="filterRisk('danger')" class="text-[10px] bg-rose-50 text-rose-700 px-2.5 py-1 rounded-lg font-bold hover:bg-rose-100 transition">위험 법인</button>
+                    <button onclick="filterRisk('caution')" class="text-[10px] bg-amber-50 text-amber-700 px-2.5 py-1 rounded-lg font-bold hover:bg-amber-100 transition">주의 법인</button>
+                    <button onclick="filterRisk('safe')" class="text-[10px] bg-emerald-50 text-emerald-700 px-2.5 py-1 rounded-lg font-bold hover:bg-emerald-100 transition">안전 법인</button>
+                </div>
+            </div>
+
+            <div class="p-5 space-y-5">
+                <!-- 요약 통계 -->
+                <div class="grid grid-cols-3 gap-2">
+                    <div class="bg-rose-50 border border-rose-100 p-3 rounded-xl text-center">
+                        <span class="text-[10px] text-rose-600 block">위험 법인</span>
+                        <span class="text-xl font-black text-rose-700" id="countDanger">2</span>
+                    </div>
+                    <div class="bg-amber-50 border border-amber-100 p-3 rounded-xl text-center">
+                        <span class="text-[10px] text-amber-600 block">주의 법인</span>
+                        <span class="text-xl font-black text-amber-700" id="countCaution">2</span>
+                    </div>
+                    <div class="bg-emerald-50 border border-emerald-100 p-3 rounded-xl text-center">
+                        <span class="text-[10px] text-emerald-600 block">안전 법인</span>
+                        <span class="text-xl font-black text-emerald-700" id="countSafe">2</span>
+                    </div>
+                </div>
+
+                <!-- 법인 리스트 -->
+                <div class="space-y-2.5" id="corpListContainer"></div>
+            </div>
+        </aside>
+
+        <!-- 오른쪽: 상세 분석 -->
+        <main class="flex-1 flex flex-col overflow-hidden">
+
+            <div class="bg-white border-b border-slate-200 h-12 flex px-4 gap-6 shrink-0 z-20">
+                <button onclick="switchTab('overviewTab')" id="btn-overviewTab" class="border-b-2 border-orange-600 text-orange-600 px-3 text-sm font-bold flex items-center gap-1.5 transition">
+                    <i class="fa-solid fa-gauge-high"></i> 건전성 대시보드
+                </button>
+                <button onclick="switchTab('dartTab')" id="btn-dartTab" class="border-b-2 border-transparent text-slate-500 hover:text-slate-800 px-3 text-sm font-bold flex items-center gap-1.5 transition">
+                    <i class="fa-solid fa-file-invoice-dollar text-blue-600"></i> DART 재무 공시
+                </button>
+                <button onclick="switchTab('newsTab')" id="btn-newsTab" class="border-b-2 border-transparent text-slate-500 hover:text-slate-800 px-3 text-sm font-bold flex items-center gap-1.5 transition">
+                    <i class="fa-solid fa-newspaper text-green-600"></i> 네이버 뉴스/블로그
+                </button>
+                <button onclick="switchTab('aiTab')" id="btn-aiTab" class="border-b-2 border-transparent text-slate-500 hover:text-slate-800 px-3 text-sm font-bold flex items-center gap-1.5 transition">
+                    <i class="fa-solid fa-wand-magic-sparkles text-purple-600"></i> AI 종합 진단
+                </button>
+            </div>
+
+            <!-- 탭1: 건전성 대시보드 -->
+            <div id="tabContent-overviewTab" class="flex-1 bg-slate-50 p-6 overflow-y-auto">
+                <div class="max-w-4xl mx-auto" id="overviewContent">
+                    <div class="text-center py-20 text-slate-400">
+                        <i class="fa-solid fa-building text-5xl block mb-4"></i>
+                        <p class="text-sm">왼쪽에서 법인을 선택하면 건전성 분석 대시보드가 표시됩니다.</p>
+                    </div>
+                </div>
+            </div>
+
+            <!-- 탭2: DART 재무 -->
+            <div id="tabContent-dartTab" class="flex-1 bg-slate-50 p-6 overflow-y-auto hidden">
+                <div class="max-w-4xl mx-auto" id="dartContent">
+                    <div class="text-center py-20 text-slate-400">
+                        <i class="fa-solid fa-chart-pie text-5xl block mb-4"></i>
+                        <p class="text-sm">법인 선택 후 DART 공시 재무제표를 확인할 수 있습니다.</p>
+                    </div>
+                </div>
+            </div>
+
+            <!-- 탭3: 네이버 뉴스 -->
+            <div id="tabContent-newsTab" class="flex-1 bg-slate-50 p-6 overflow-y-auto hidden">
+                <div class="max-w-3xl mx-auto space-y-4" id="naverNewsContent">
+                    <div class="text-center py-20 text-slate-400">
+                        <i class="fa-solid fa-newspaper text-5xl block mb-4"></i>
+                        <p class="text-sm">법인 선택 후 관련 뉴스를 실시간 검색합니다.</p>
+                    </div>
+                </div>
+            </div>
+
+            <!-- 탭4: AI 분석 -->
+            <div id="tabContent-aiTab" class="flex-1 bg-slate-50 p-6 overflow-y-auto hidden">
+                <div class="max-w-3xl mx-auto space-y-6">
+                    <div class="bg-white border border-slate-200 rounded-2xl p-6 shadow-sm">
+                        <div class="flex items-center gap-3 mb-4">
+                            <div class="bg-purple-100 text-purple-700 w-10 h-10 rounded-xl flex items-center justify-center"><i class="fa-solid fa-robot text-lg"></i></div>
+                            <div>
+                                <h3 class="font-bold text-slate-900">AI 법인 임대인 건전성 종합 진단</h3>
+                                <p class="text-xs text-slate-500">재무제표, 등기 변동, 뉴스를 종합하여 이 법인과 전세 계약해도 안전한지 판단합니다.</p>
+                            </div>
+                        </div>
+                        <textarea id="aiInput" rows="6" placeholder="법인 정보를 직접 입력하거나, 왼쪽에서 법인 선택 후 '이 법인 AI 진단' 버튼을 눌러주세요.&#10;예: 법인명 ○○건설, 자본금 5억, 부채 총계 120억, 최근 3년 당기순이익 -8억/-3억/+1억..."
+                            class="w-full border border-slate-200 hover:border-slate-300 focus:border-purple-500 rounded-xl p-4 text-sm focus:outline-none transition mb-4"></textarea>
+                        <button onclick="analyzeCorpWithAI()" class="w-full bg-gradient-to-r from-purple-600 to-orange-600 hover:from-purple-700 hover:to-orange-700 text-white font-bold py-3 px-4 rounded-xl shadow-md flex items-center justify-center gap-2 transition">
+                            <i class="fa-solid fa-wand-magic-sparkles"></i> AI 종합 건전성 진단 시작
+                        </button>
+                    </div>
+                    <div id="aiResultCard" class="bg-white border border-slate-200 rounded-2xl p-6 shadow-sm hidden">
+                        <div class="flex items-center justify-between border-b border-slate-100 pb-3 mb-4">
+                            <span class="text-xs bg-purple-100 text-purple-700 px-2.5 py-1 rounded-full font-bold"><i class="fa-solid fa-clipboard-check"></i> 건전성 진단 보고서</span>
+                            <span class="text-xs text-slate-400">Gemini AI</span>
+                        </div>
+                        <div id="aiResultContent" class="prose prose-slate max-w-full text-sm leading-relaxed"></div>
+                    </div>
+                </div>
+            </div>
+        </main>
+    </div>
+
+    <!-- 설정 모달 -->
+    <div id="settingsModal" class="fixed inset-0 bg-black/50 z-[2000] flex items-center justify-center hidden">
+        <div class="bg-white w-full max-w-lg rounded-2xl shadow-xl p-6 mx-4 space-y-4">
+            <div class="flex items-center justify-between border-b border-slate-100 pb-3">
+                <h3 class="font-bold text-slate-900"><i class="fa-solid fa-key text-orange-600"></i> API 키 설정</h3>
+                <button onclick="closeModal('settingsModal')" class="text-slate-400 hover:text-slate-600"><i class="fa-solid fa-times text-lg"></i></button>
+            </div>
+            <div class="space-y-4">
+                <div>
+                    <h4 class="text-xs font-bold text-slate-800 mb-2"><i class="fa-solid fa-chart-bar text-blue-600"></i> DART 전자공시 API</h4>
+                    <p class="text-[10px] text-slate-400 mb-1"><a href="https://opendart.fss.or.kr" target="_blank" class="text-blue-600 underline">opendart.fss.or.kr</a>에서 인증키 발급</p>
+                    <input type="password" id="dart_api_key" placeholder="DART API Key" class="w-full border border-slate-200 rounded-lg px-3 py-1.5 text-[11px] font-mono focus:outline-none focus:border-blue-500">
+                </div>
+                <div>
+                    <h4 class="text-xs font-bold text-slate-800 mb-2"><i class="fa-solid fa-n text-green-600"></i> 네이버 검색 API</h4>
+                    <div class="space-y-2">
+                        <input type="text" id="naver_client_id" placeholder="Client ID" class="w-full border border-slate-200 rounded-lg px-3 py-1.5 text-[11px] font-mono focus:outline-none focus:border-green-500">
+                        <input type="password" id="naver_client_secret" placeholder="Client Secret" class="w-full border border-slate-200 rounded-lg px-3 py-1.5 text-[11px] font-mono focus:outline-none focus:border-green-500">
+                    </div>
+                </div>
+                <div class="bg-purple-50 border border-purple-200 rounded-lg p-2.5 text-[10px] text-purple-800">
+                    <i class="fa-solid fa-robot"></i> <b>AI 진단:</b> 내장 규칙 기반 분석 엔진 탑재 — 외부 API 키 없이 즉시 진단 가능
+                </div>
+            </div>
+            <div class="flex gap-2">
+                <button onclick="saveKeys()" class="flex-1 bg-orange-600 text-white font-bold py-2 rounded-xl text-xs hover:bg-orange-700 transition"><i class="fa-solid fa-save"></i> 저장</button>
+                <button onclick="closeModal('settingsModal')" class="flex-1 bg-slate-200 text-slate-800 font-bold py-2 rounded-xl text-xs transition">닫기</button>
+            </div>
+        </div>
+    </div>
+
+    <!-- 토스트 -->
+    <div id="toastMessage" class="fixed top-6 left-1/2 -translate-x-1/2 bg-slate-900 text-white px-5 py-3 rounded-xl text-xs font-bold shadow-2xl z-[3000] flex items-center gap-2 opacity-0 transition-opacity duration-300 pointer-events-none">
+        <i id="toastIcon" class="fa-solid fa-circle-info text-orange-400 text-sm"></i>
+        <span id="toastText"></span>
+    </div>
+
+    <script>
+        // =========================================================================
+        // 상태
+        // =========================================================================
+        let geminiKey = "", dartKey = "";
+        const NAVER = { clientId:"", clientSecret:"", proxy:"https://corsproxy.io/?", searchBase:"https://openapi.naver.com/v1/search" };
+        let selectedCorp = null;
+
+        // 법인 Mock DB (실제는 DART API + 등기 API 연동)
+        const corpDB = [
+            {
+                id: "C001", name: "한강부동산개발(주)", bizNo: "110-86-12345",
+                ceo: "김건설", established: "2018.03.15", capital: 500000000,
+                industry: "부동산 개발 및 공급업", employees: 12,
+                address: "서울 강서구 화곡동 303-5",
+                risk: "danger", score: 22,
+                properties: 45, // 보유 부동산 수
+                financials: {
+                    totalAssets: 18500000000, totalLiabilities: 17200000000, equity: 1300000000,
+                    revenue: [850000000, 420000000, 180000000], // 최근3년
+                    netIncome: [-320000000, -580000000, -120000000], // 최근3년 당기순이익
+                    debtRatio: 1323.1, currentRatio: 45.2
+                },
+                registryChanges: [
+                    { date: "2026.05.10", type: "대표이사 변경", detail: "김건설 → 박대표 (3년 내 3회 변경)" },
+                    { date: "2026.03.22", type: "자본금 감소", detail: "10억 → 5억 (자본잠식 대응)" },
+                    { date: "2025.11.05", type: "본점 이전", detail: "강남구 → 강서구 (6개월 내 2회 이전)" }
+                ],
+                warnings: ["부채비율 1323% (업계 평균 대비 극단적 수치)", "최근 3년 연속 적자", "대표이사 3년 내 3회 변경", "자본잠식 상태", "보유 부동산 45건 중 18건 근저당 과다 설정"]
+            },
+            {
+                id: "C002", name: "(주)성원주택관리", bizNo: "220-87-67890",
+                ceo: "이성원", established: "2010.07.20", capital: 2000000000,
+                industry: "부동산 임대 및 관리업", employees: 35,
+                address: "서울 마포구 상암동 1234",
+                risk: "safe", score: 88,
+                properties: 8,
+                financials: {
+                    totalAssets: 32000000000, totalLiabilities: 12000000000, equity: 20000000000,
+                    revenue: [4500000000, 4200000000, 3800000000],
+                    netIncome: [680000000, 520000000, 410000000],
+                    debtRatio: 60.0, currentRatio: 220.5
+                },
+                registryChanges: [
+                    { date: "2025.01.15", type: "이사 선임", detail: "정기 주주총회 선임 (정상)" }
+                ],
+                warnings: []
+            },
+            {
+                id: "C003", name: "드림빌라투자(유)", bizNo: "330-88-11111",
+                ceo: "최투자", established: "2022.11.01", capital: 100000000,
+                industry: "부동산 매매 및 임대업", employees: 3,
+                address: "경기 부천시 원미동 56-7",
+                risk: "danger", score: 15,
+                properties: 120,
+                financials: {
+                    totalAssets: 45000000000, totalLiabilities: 44500000000, equity: 500000000,
+                    revenue: [1200000000, 0, 0],
+                    netIncome: [-890000000, 0, 0],
+                    debtRatio: 8900.0, currentRatio: 12.3
+                },
+                registryChanges: [
+                    { date: "2026.06.01", type: "대표이사 변경", detail: "최투자 → 정바지 (설립 3년 내 5회 변경)" },
+                    { date: "2026.04.15", type: "사업목적 추가", detail: "'대부업' 목적 추가" },
+                    { date: "2026.02.20", type: "본점 이전", detail: "서울 → 부천 (1년 내 4회 이전)" }
+                ],
+                warnings: ["설립 4년 미만 신생 법인", "자본금 1억 (부동산 120건 보유 대비 극소)", "부채비율 8900%", "대표이사 5회 변경", "사업목적에 '대부업' 포함 — 전세사기 법인 전형적 패턴"]
+            },
+            {
+                id: "C004", name: "(주)현대리빙", bizNo: "440-86-22222",
+                ceo: "박현대", established: "2005.02.10", capital: 10000000000,
+                industry: "부동산 개발 및 분양업", employees: 180,
+                address: "서울 서초구 서초동 1500",
+                risk: "safe", score: 92,
+                properties: 15,
+                financials: {
+                    totalAssets: 250000000000, totalLiabilities: 95000000000, equity: 155000000000,
+                    revenue: [68000000000, 55000000000, 42000000000],
+                    netIncome: [8500000000, 6200000000, 4800000000],
+                    debtRatio: 61.3, currentRatio: 185.4
+                },
+                registryChanges: [
+                    { date: "2026.03.20", type: "감사 선임", detail: "정기총회 (정상)" }
+                ],
+                warnings: []
+            },
+            {
+                id: "C005", name: "글로벌에셋(주)", bizNo: "550-87-33333",
+                ceo: "장글로벌", established: "2019.06.15", capital: 500000000,
+                industry: "부동산 임대업", employees: 8,
+                address: "인천 부평구 부평동 200",
+                risk: "caution", score: 48,
+                properties: 32,
+                financials: {
+                    totalAssets: 22000000000, totalLiabilities: 18000000000, equity: 4000000000,
+                    revenue: [2100000000, 1800000000, 2500000000],
+                    netIncome: [-150000000, 80000000, 250000000],
+                    debtRatio: 450.0, currentRatio: 78.5
+                },
+                registryChanges: [
+                    { date: "2026.04.10", type: "대표이사 변경", detail: "장글로벌 → 한신규" },
+                    { date: "2025.08.22", type: "증자", detail: "3억 → 5억" }
+                ],
+                warnings: ["부채비율 450% (업계 평균 초과)", "최근 1년 내 대표 변경", "매출 감소 추세"]
+            },
+            {
+                id: "C006", name: "(주)서울도시재생", bizNo: "660-86-44444",
+                ceo: "윤재생", established: "2015.09.01", capital: 3000000000,
+                industry: "도시재생 및 부동산 개발업", employees: 55,
+                address: "서울 영등포구 여의도동 88",
+                risk: "caution", score: 62,
+                properties: 22,
+                financials: {
+                    totalAssets: 85000000000, totalLiabilities: 52000000000, equity: 33000000000,
+                    revenue: [12000000000, 15000000000, 18000000000],
+                    netIncome: [200000000, -500000000, 1200000000],
+                    debtRatio: 157.6, currentRatio: 110.2
+                },
+                registryChanges: [
+                    { date: "2026.02.01", type: "사업목적 변경", detail: "'부동산 PF 대출 중개' 추가" }
+                ],
+                warnings: ["2024년 당기순손실 5억", "PF 대출 중개 사업 추가 — 유동성 리스크"]
+            }
+        ];
+
+        let filteredCorps = [...corpDB];
+
+        // =========================================================================
+        // 초기화
+        // =========================================================================
+        window.onload = function() {
+            ['corp_dart_key','corp_naver_id','corp_naver_secret','corp_gemini_key'].forEach(k => {
+                const v = localStorage.getItem(k);
+                if (v) {
+                    if (k==='corp_dart_key') { dartKey=v; document.getElementById('dart_api_key').value=v; }
+                    if (k==='corp_naver_id') { NAVER.clientId=v; document.getElementById('naver_client_id').value=v; }
+                    if (k==='corp_naver_secret') { NAVER.clientSecret=v; document.getElementById('naver_client_secret').value=v; }
+                    if (k==='corp_gemini_key') { geminiKey=v; document.getElementById('gemini_api_key').value=v; }
+                }
+            });
+            renderCorpList(corpDB);
+            updateCounts();
+        };
+
+        // =========================================================================
+        // 법인 리스트
+        // =========================================================================
+        function renderCorpList(corps) {
+            const container = document.getElementById("corpListContainer");
+            container.innerHTML = "";
+            corps.forEach(corp => {
+                const riskConfig = {
+                    danger: { badge:"위험", badgeClass:"bg-rose-100 text-rose-700", border:"border-l-rose-500", scoreColor:"text-rose-600" },
+                    caution: { badge:"주의", badgeClass:"bg-amber-100 text-amber-700", border:"border-l-amber-500", scoreColor:"text-amber-600" },
+                    safe: { badge:"안전", badgeClass:"bg-emerald-100 text-emerald-700", border:"border-l-emerald-500", scoreColor:"text-emerald-600" }
+                }[corp.risk];
+
+                const card = document.createElement("div");
+                card.className = `bg-white border border-slate-200/80 p-4 rounded-xl shadow-sm border-l-4 ${riskConfig.border} hover:shadow-md transition cursor-pointer ${selectedCorp?.id===corp.id?'ring-2 ring-orange-400':''}`;
+                card.onclick = () => selectCorp(corp);
+                card.innerHTML = `
+                    <div class="flex items-center justify-between mb-2">
+                        <div class="flex items-center gap-1.5">
+                            <span class="${riskConfig.badgeClass} text-[10px] font-bold px-1.5 py-0.5 rounded-full">${riskConfig.badge}</span>
+                            <span class="text-[10px] text-slate-400">${corp.bizNo}</span>
+                        </div>
+                        <span class="text-lg font-black ${riskConfig.scoreColor}">${corp.score}점</span>
+                    </div>
+                    <h4 class="text-sm font-bold text-slate-800 mb-1">${corp.name}</h4>
+                    <p class="text-[10px] text-slate-500 mb-2">${corp.industry} | 대표: ${corp.ceo} | 설립: ${corp.established}</p>
+                    <div class="flex gap-3 text-[10px]">
+                        <span class="text-slate-600">자본금 <b>${formatKRW(corp.capital)}</b></span>
+                        <span class="text-slate-600">부동산 <b>${corp.properties}건</b></span>
+                        <span class="text-slate-600">부채비율 <b class="${corp.financials.debtRatio>300?'text-rose-600':corp.financials.debtRatio>150?'text-amber-600':'text-emerald-600'}">${corp.financials.debtRatio}%</b></span>
+                    </div>
+                    ${corp.warnings.length ? `<div class="mt-2 bg-rose-50 rounded-lg p-2"><p class="text-[10px] text-rose-700 font-medium"><i class="fa-solid fa-triangle-exclamation"></i> ${corp.warnings[0]}</p></div>` : ''}
+                `;
+                container.appendChild(card);
+            });
+        }
+
+        function updateCounts() {
+            document.getElementById("countDanger").innerText = corpDB.filter(c=>c.risk==='danger').length;
+            document.getElementById("countCaution").innerText = corpDB.filter(c=>c.risk==='caution').length;
+            document.getElementById("countSafe").innerText = corpDB.filter(c=>c.risk==='safe').length;
+        }
+
+        function filterRisk(level) {
+            filteredCorps = level==='all' ? [...corpDB] : corpDB.filter(c=>c.risk===level);
+            renderCorpList(filteredCorps);
+        }
+
+        function handleSearch() {
+            const q = document.getElementById("searchInput").value.trim().toLowerCase();
+            if (!q) { filteredCorps=[...corpDB]; } else {
+                filteredCorps = corpDB.filter(c => c.name.toLowerCase().includes(q) || c.bizNo.includes(q) || c.ceo.includes(q));
+            }
+            renderCorpList(filteredCorps);
+        }
+
+        // =========================================================================
+        // 법인 선택 → 대시보드 렌더
+        // =========================================================================
+        function selectCorp(corp) {
+            selectedCorp = corp;
+            renderCorpList(filteredCorps);
+            renderOverview(corp);
+            renderDart(corp);
+            loadCorpNews(corp);
+            switchTab('overviewTab');
+        }
+
+        function renderOverview(corp) {
+            const rc = { danger:{label:"위험",color:"text-rose-600",bg:"bg-rose-50",border:"border-rose-200"},
+                         caution:{label:"주의",color:"text-amber-600",bg:"bg-amber-50",border:"border-amber-200"},
+                         safe:{label:"안전",color:"text-emerald-600",bg:"bg-emerald-50",border:"border-emerald-200"} }[corp.risk];
+            const gaugeColor = corp.risk==='danger'?'bg-rose-500':corp.risk==='caution'?'bg-amber-500':'bg-emerald-500';
+
+            document.getElementById("overviewContent").innerHTML = `
+                <div class="space-y-6">
+                    <!-- 헤더 -->
+                    <div class="bg-gradient-to-br from-slate-900 to-slate-800 text-white p-6 rounded-2xl shadow-xl relative overflow-hidden">
+                        <div class="absolute -right-8 -bottom-8 text-white/5 text-9xl font-black">CORP</div>
+                        <div class="flex items-center justify-between mb-3">
+                            <span class="text-xs bg-white/20 px-2.5 py-0.5 rounded-full">${corp.industry}</span>
+                            <span class="text-xs text-slate-300">${corp.bizNo}</span>
+                        </div>
+                        <h2 class="text-2xl font-black mb-1">${corp.name}</h2>
+                        <p class="text-xs text-slate-400 mb-4">대표: ${corp.ceo} | 설립: ${corp.established} | 직원: ${corp.employees}명 | ${corp.address}</p>
+                        <div class="bg-white/10 rounded-xl p-4 flex items-center justify-between">
+                            <div>
+                                <span class="text-xs text-slate-300 block">임대인 건전성 종합 점수</span>
+                                <div class="w-48 bg-white/20 rounded-full h-3 mt-2">
+                                    <div class="${gaugeColor} h-3 rounded-full gauge-fill" style="width:${corp.score}%"></div>
+                                </div>
+                            </div>
+                            <div class="text-right">
+                                <span class="text-4xl font-black ${rc.color.replace('text-','text-')}" style="color:${corp.risk==='danger'?'#f87171':corp.risk==='caution'?'#fbbf24':'#34d399'}">${corp.score}점</span>
+                                <span class="block text-xs font-bold mt-1" style="color:${corp.risk==='danger'?'#fca5a5':corp.risk==='caution'?'#fde68a':'#6ee7b7'}">${rc.label} 등급</span>
+                            </div>
+                        </div>
+                    </div>
+
+                    <!-- 핵심 지표 -->
+                    <div class="grid grid-cols-4 gap-3">
+                        <div class="bg-white border border-slate-200 p-4 rounded-xl text-center">
+                            <span class="text-[10px] text-slate-500 block mb-1">자본금</span>
+                            <span class="text-lg font-bold">${formatKRW(corp.capital)}</span>
+                        </div>
+                        <div class="bg-white border border-slate-200 p-4 rounded-xl text-center">
+                            <span class="text-[10px] text-slate-500 block mb-1">부채비율</span>
+                            <span class="text-lg font-bold ${corp.financials.debtRatio>300?'text-rose-600':corp.financials.debtRatio>150?'text-amber-600':'text-emerald-600'}">${corp.financials.debtRatio}%</span>
+                        </div>
+                        <div class="bg-white border border-slate-200 p-4 rounded-xl text-center">
+                            <span class="text-[10px] text-slate-500 block mb-1">유동비율</span>
+                            <span class="text-lg font-bold ${corp.financials.currentRatio<100?'text-rose-600':'text-emerald-600'}">${corp.financials.currentRatio}%</span>
+                        </div>
+                        <div class="bg-white border border-slate-200 p-4 rounded-xl text-center">
+                            <span class="text-[10px] text-slate-500 block mb-1">보유 부동산</span>
+                            <span class="text-lg font-bold">${corp.properties}건</span>
+                        </div>
+                    </div>
+
+                    <!-- 경고 사항 -->
+                    ${corp.warnings.length ? `
+                    <div class="${rc.bg} border ${rc.border} p-4 rounded-xl space-y-2">
+                        <h4 class="text-xs font-bold ${rc.color} flex items-center gap-1"><i class="fa-solid fa-triangle-exclamation"></i> 위험/주의 사항 (${corp.warnings.length}건)</h4>
+                        ${corp.warnings.map(w => `<p class="text-xs text-slate-700 flex items-start gap-2"><i class="fa-solid fa-circle text-[6px] mt-1.5 ${rc.color} shrink-0"></i>${w}</p>`).join('')}
+                    </div>` : `<div class="bg-emerald-50 border border-emerald-200 p-4 rounded-xl"><p class="text-xs text-emerald-700 font-bold"><i class="fa-solid fa-shield-check"></i> 특이 경고 사항 없음 — 안정적인 법인입니다.</p></div>`}
+
+                    <!-- 등기 변동 이력 -->
+                    <div class="bg-white border border-slate-200 p-4 rounded-xl">
+                        <h4 class="text-xs font-bold text-slate-800 mb-3 flex items-center gap-1"><i class="fa-solid fa-clock-rotate-left text-blue-600"></i> 법인등기 변동 이력</h4>
+                        <div class="space-y-2">
+                            ${corp.registryChanges.map(r => `
+                                <div class="flex items-start gap-3 text-xs border-l-2 ${r.type.includes('변경')||r.type.includes('감소')?'border-l-rose-400':'border-l-slate-300'} pl-3 py-1">
+                                    <span class="text-slate-400 shrink-0 w-20">${r.date}</span>
+                                    <span class="font-bold text-slate-700 shrink-0 w-24">${r.type}</span>
+                                    <span class="text-slate-600">${r.detail}</span>
+                                </div>
+                            `).join('')}
+                            ${corp.registryChanges.length===0 ? '<p class="text-xs text-slate-400">최근 변동 이력 없음</p>' : ''}
+                        </div>
+                    </div>
+
+                    <!-- AI 진단 버튼 -->
+                    <button onclick="prefillAI('${corp.id}')" class="w-full bg-gradient-to-r from-purple-600 to-orange-600 text-white font-bold py-3 rounded-xl text-sm hover:from-purple-700 transition">
+                        <i class="fa-solid fa-wand-magic-sparkles"></i> 이 법인 AI 종합 건전성 진단
+                    </button>
+                </div>
+            `;
+        }
+
+        // =========================================================================
+        // DART 재무제표
+        // =========================================================================
+        function renderDart(corp) {
+            const f = corp.financials;
+            const years = ["2025","2024","2023"];
+            document.getElementById("dartContent").innerHTML = `
+                <div class="space-y-6">
+                    <div class="bg-white border border-slate-200 rounded-2xl p-6 shadow-sm">
+                        <div class="flex items-center justify-between border-b border-slate-100 pb-3 mb-4">
+                            <h3 class="font-bold text-slate-900"><i class="fa-solid fa-file-invoice-dollar text-blue-600"></i> ${corp.name} 재무제표 요약</h3>
+                            <span class="text-[10px] text-slate-400">DART 전자공시 기준</span>
+                        </div>
+
+                        <!-- 재무상태표 -->
+                        <h4 class="text-xs font-bold text-slate-700 mb-2">재무상태표 (최근 사업연도)</h4>
+                        <div class="grid grid-cols-3 gap-3 mb-6">
+                            <div class="bg-blue-50 p-3 rounded-xl text-center">
+                                <span class="text-[10px] text-blue-600 block">총자산</span>
+                                <span class="text-lg font-bold">${formatKRW(f.totalAssets)}</span>
+                            </div>
+                            <div class="bg-rose-50 p-3 rounded-xl text-center">
+                                <span class="text-[10px] text-rose-600 block">총부채</span>
+                                <span class="text-lg font-bold text-rose-600">${formatKRW(f.totalLiabilities)}</span>
+                            </div>
+                            <div class="bg-emerald-50 p-3 rounded-xl text-center">
+                                <span class="text-[10px] text-emerald-600 block">자본총계</span>
+                                <span class="text-lg font-bold ${f.equity<0?'text-rose-600':'text-emerald-600'}">${formatKRW(f.equity)}</span>
+                            </div>
+                        </div>
+
+                        <!-- 손익 추이 -->
+                        <h4 class="text-xs font-bold text-slate-700 mb-2">매출 및 당기순이익 추이 (최근 3년)</h4>
+                        <div class="overflow-x-auto">
+                            <table class="w-full text-xs">
+                                <thead><tr class="bg-slate-50"><th class="p-2 text-left text-slate-500">항목</th>${years.map(y=>`<th class="p-2 text-right text-slate-500">${y}</th>`).join('')}</tr></thead>
+                                <tbody>
+                                    <tr class="border-t border-slate-100">
+                                        <td class="p-2 font-medium">매출액</td>
+                                        ${f.revenue.map(v=>`<td class="p-2 text-right font-bold">${formatKRW(v)}</td>`).join('')}
+                                    </tr>
+                                    <tr class="border-t border-slate-100">
+                                        <td class="p-2 font-medium">당기순이익</td>
+                                        ${f.netIncome.map(v=>`<td class="p-2 text-right font-bold ${v<0?'text-rose-600':'text-emerald-600'}">${formatKRW(v)}</td>`).join('')}
+                                    </tr>
+                                </tbody>
+                            </table>
+                        </div>
+
+                        <!-- 비율 차트 -->
+                        <div class="mt-4 grid grid-cols-2 gap-3">
+                            <div class="bg-slate-50 p-3 rounded-xl">
+                                <div class="flex justify-between text-[11px] mb-1">
+                                    <span class="text-slate-600 font-medium">부채비율</span>
+                                    <span class="font-bold ${f.debtRatio>300?'text-rose-600':f.debtRatio>150?'text-amber-600':'text-emerald-600'}">${f.debtRatio}%</span>
+                                </div>
+                                <div class="w-full bg-slate-200 rounded-full h-2">
+                                    <div class="${f.debtRatio>300?'bg-rose-500':f.debtRatio>150?'bg-amber-500':'bg-emerald-500'} h-2 rounded-full gauge-fill" style="width:${Math.min(f.debtRatio/20,100)}%"></div>
+                                </div>
+                                <span class="text-[9px] text-slate-400">안전기준: 200% 이하</span>
+                            </div>
+                            <div class="bg-slate-50 p-3 rounded-xl">
+                                <div class="flex justify-between text-[11px] mb-1">
+                                    <span class="text-slate-600 font-medium">유동비율</span>
+                                    <span class="font-bold ${f.currentRatio<100?'text-rose-600':'text-emerald-600'}">${f.currentRatio}%</span>
+                                </div>
+                                <div class="w-full bg-slate-200 rounded-full h-2">
+                                    <div class="${f.currentRatio<100?'bg-rose-500':'bg-emerald-500'} h-2 rounded-full gauge-fill" style="width:${Math.min(f.currentRatio/3,100)}%"></div>
+                                </div>
+                                <span class="text-[9px] text-slate-400">안전기준: 100% 이상</span>
+                            </div>
+                        </div>
+                    </div>
+
+                    <!-- DART 실시간 연동 안내 -->
+                    <div class="bg-blue-50 border border-blue-200 rounded-xl p-4 text-xs text-blue-800">
+                        <i class="fa-solid fa-info-circle"></i> DART API 키 설정 시 <b>opendart.fss.or.kr</b>에서 실시간 재무제표를 가져옵니다.
+                        현재는 시뮬레이션 데이터가 표시됩니다.
+                    </div>
+                </div>
+            `;
+        }
+
+        // =========================================================================
+        // 네이버 뉴스 검색
+        // =========================================================================
+        async function loadCorpNews(corp) {
+            const container = document.getElementById("naverNewsContent");
+            if (!NAVER.clientId) {
+                renderMockCorpNews(corp);
+                return;
+            }
+            container.innerHTML = `<div class="skeleton h-20 w-full"></div><div class="skeleton h-20 w-full mt-2"></div>`;
+            try {
+                const res = await fetch(`${NAVER.proxy}${encodeURIComponent(`${NAVER.searchBase}/news.json?query=${encodeURIComponent(corp.name)}&display=5&sort=date`)}`, {
+                    headers: { "X-Naver-Client-Id": NAVER.clientId, "X-Naver-Client-Secret": NAVER.clientSecret }
+                });
+                if (!res.ok) throw new Error();
+                const data = await res.json();
+                if (data.items?.length) {
+                    renderNewsCards(data.items, corp.name);
+                } else {
+                    renderMockCorpNews(corp);
+                }
+            } catch {
+                renderMockCorpNews(corp);
+            }
+        }
+
+        function renderNewsCards(items, corpName) {
+            const container = document.getElementById("naverNewsContent");
+            container.innerHTML = `<h3 class="text-sm font-bold text-slate-800"><i class="fa-solid fa-newspaper text-green-600"></i> "${corpName}" 관련 뉴스 (${items.length}건)</h3>`;
+            items.forEach(item => {
+                const title = (item.title||"").replace(/<[^>]*>/g,"");
+                const desc = (item.description||"").replace(/<[^>]*>/g,"");
+                const isDanger = ["사기","부도","압류","체납","횡령","배임","파산"].some(w => (title+desc).includes(w));
+                const card = document.createElement("div");
+                card.className = `bg-white border border-slate-200 p-4 rounded-xl ${isDanger?'border-l-4 border-l-rose-500':''} hover:shadow-md transition cursor-pointer`;
+                card.onclick = () => window.open(item.link, "_blank");
+                card.innerHTML = `
+                    <div class="flex items-center justify-between mb-1">
+                        ${isDanger?'<span class="bg-rose-100 text-rose-700 text-[10px] font-bold px-1.5 py-0.5 rounded-full"><i class="fa-solid fa-triangle-exclamation"></i> 주의</span>':'<span class="bg-blue-100 text-blue-700 text-[10px] font-bold px-1.5 py-0.5 rounded-full">뉴스</span>'}
+                        <span class="text-[10px] text-slate-400">${formatDate(item.pubDate)}</span>
+                    </div>
+                    <h4 class="text-xs font-bold text-slate-800 mb-1">${title}</h4>
+                    <p class="text-[10px] text-slate-500 line-clamp-2">${desc}</p>
+                `;
+                container.appendChild(card);
+            });
+        }
+
+        function renderMockCorpNews(corp) {
+            const container = document.getElementById("naverNewsContent");
+            container.innerHTML = `
+                <h3 class="text-sm font-bold text-slate-800 mb-3"><i class="fa-solid fa-newspaper text-green-600"></i> "${corp.name}" 관련 뉴스</h3>
+                <div class="bg-white border border-slate-200 p-4 rounded-xl">
+                    <p class="text-xs text-slate-500"><i class="fa-solid fa-info-circle text-slate-400"></i> 네이버 API 키 설정 후 실시간 뉴스를 검색할 수 있습니다. 현재 시뮬레이션 모드.</p>
+                </div>
+                ${corp.risk==='danger' ? `
+                <div class="bg-white border border-slate-200 p-4 rounded-xl border-l-4 border-l-rose-500">
+                    <span class="bg-rose-100 text-rose-700 text-[10px] font-bold px-1.5 py-0.5 rounded-full">경고</span>
+                    <h4 class="text-xs font-bold text-slate-800 mt-1">[시뮬레이션] ${corp.name} 관련 전세사기 피해 신고 접수</h4>
+                    <p class="text-[10px] text-slate-500 mt-1">해당 법인 소유 다수 부동산에서 임차인 보증금 미반환 사례가 접수되었다는 모의 뉴스입니다.</p>
+                </div>` : ''}
+            `;
+        }
+
+        function formatDate(d) { if(!d)return""; try{const dt=new Date(d); return isNaN(dt)?"":(`${dt.getFullYear()}.${String(dt.getMonth()+1).padStart(2,'0')}.${String(dt.getDate()).padStart(2,'0')}`);}catch{return d;} }
+
+        // =========================================================================
+        // AI 분석
+        // =========================================================================
+        function prefillAI(corpId) {
+            const corp = corpDB.find(c=>c.id===corpId);
+            if (!corp) return;
+            const f = corp.financials;
+            document.getElementById("aiInput").value = `법인명: ${corp.name}\n사업자번호: ${corp.bizNo}\n대표: ${corp.ceo}\n설립일: ${corp.established}\n업종: ${corp.industry}\n직원: ${corp.employees}명\n자본금: ${formatKRW(corp.capital)}\n보유 부동산: ${corp.properties}건\n\n[재무제표]\n총자산: ${formatKRW(f.totalAssets)} / 총부채: ${formatKRW(f.totalLiabilities)} / 자본: ${formatKRW(f.equity)}\n부채비율: ${f.debtRatio}% / 유동비율: ${f.currentRatio}%\n최근3년 당기순이익: ${f.netIncome.map(v=>formatKRW(v)).join(' → ')}\n\n[등기변동]\n${corp.registryChanges.map(r=>`${r.date} ${r.type}: ${r.detail}`).join('\n')}\n\n[경고사항]\n${corp.warnings.join('\n')}`;
+            switchTab('aiTab');
+            showToast(`${corp.name} 정보가 AI 분석 입력에 채워졌습니다.`);
+        }
+
+        async function analyzeCorpWithAI() {
+            const input = document.getElementById("aiInput").value.trim();
+            if (!input) { showToast("분석할 법인 정보를 입력하세요.", "fa-exclamation-circle", "text-rose-400"); return; }
+            const card = document.getElementById("aiResultCard");
+            const content = document.getElementById("aiResultContent");
+            card.classList.remove("hidden");
+            content.innerHTML = `<div class="flex flex-col items-center py-8"><div class="relative w-12 h-12"><div class="absolute inset-0 border-4 border-purple-200 rounded-full"></div><div class="absolute inset-0 border-4 border-purple-600 rounded-full border-t-transparent animate-spin"></div></div><p class="text-xs font-bold text-slate-900 mt-4">내장 AI 엔진이 진단 중...</p></div>`;
+            await new Promise(r => setTimeout(r, 700));
+            content.innerHTML = marked.parse(analyzeCorpLocal(input));
+            showToast("법인 건전성 진단 완료!", "fa-circle-check", "text-orange-400");
+        }
+
+        function analyzeCorpLocal(text) {
+            const t = text.toLowerCase();
+            const risks = [], cautions = [], safes = [];
+            let grade = "B", recommend = "주의 후 계약 가능";
+
+            // 부채비율 추출
+            const debtMatch = text.match(/부채비율[:\s]*([\d.]+)%/);
+            const debtRatio = debtMatch ? parseFloat(debtMatch[1]) : 0;
+            const currentMatch = text.match(/유동비율[:\s]*([\d.]+)%/);
+            const currentRatio = currentMatch ? parseFloat(currentMatch[1]) : 0;
+            const propMatch = text.match(/부동산[:\s]*(\d+)건/);
+            const properties = propMatch ? parseInt(propMatch[1]) : 0;
+
+            // 위험 패턴 탐지
+            if (debtRatio > 500) risks.push(`부채비율 ${debtRatio}% — 업계 평균(200%) 대비 극단적 수치, 자본잠식 또는 파산 위험`);
+            else if (debtRatio > 300) cautions.push(`부채비율 ${debtRatio}% — 경계 수준`);
+            if (currentRatio > 0 && currentRatio < 50) risks.push(`유동비율 ${currentRatio}% — 단기 채무 상환 능력 극히 부족`);
+            else if (currentRatio > 0 && currentRatio < 100) cautions.push(`유동비율 ${currentRatio}% — 단기 유동성 부족`);
+
+            if (t.includes("자본잠식")) risks.push("자본잠식 상태 — 부채가 자본을 초과, 법적 존속 위험");
+            if (t.includes("대부업")) risks.push("사업목적에 '대부업' 포함 — 전세사기 법인의 전형적 패턴");
+            if (t.match(/대표.*변경.*(\d)회/) || t.includes("3회 변경") || t.includes("5회 변경")) risks.push("대표이사 잦은 변경 — 책임 회피 목적의 바지사장 의심");
+            if (t.includes("연속 적자") || (text.match(/-[\d.]+억.*-[\d.]+억.*-[\d.]+억/))) risks.push("3년 연속 적자 — 지속적 영업손실, 임대 보증금 반환 재원 부족");
+            if (properties > 50) risks.push(`부동산 ${properties}건 대량 보유 — 소규모 법인의 과도한 부동산 확장, 갭투자 법인 의심`);
+            if (t.includes("본점 이전") && (t.includes("2회") || t.includes("4회"))) cautions.push("잦은 본점 이전 — 채권자 회피 가능성");
+
+            // 안전 패턴
+            if (debtRatio > 0 && debtRatio < 150) safes.push(`부채비율 ${debtRatio}% — 건전한 재무 구조`);
+            if (currentRatio > 150) safes.push(`유동비율 ${currentRatio}% — 충분한 단기 지급 능력`);
+            if (t.includes("정기") && t.includes("정상")) safes.push("등기 변동이 정기 총회 선임 등 정상적 패턴");
+            if (properties > 0 && properties < 20 && debtRatio < 200) safes.push("적정 규모 부동산 보유 + 건전 재무 — 안정적 임대 법인");
+
+            // 등급 산정
+            if (risks.length >= 3) { grade = "F"; recommend = "강력 비추천 — 전세 계약 절대 금지"; }
+            else if (risks.length >= 2) { grade = "D"; recommend = "비추천 — 보증보험 가입 불가 가능성 높음"; }
+            else if (risks.length === 1) { grade = "C"; recommend = "주의 — 보증보험 필수 가입 후 계약"; }
+            else if (safes.length >= 2) { grade = "A"; recommend = "안전 — 계약 권장"; }
+            if (risks.length === 0 && safes.length >= 3) { grade = "S"; recommend = "최우수 — 안심 계약 가능"; }
+
+            const emoji = {S:"🟢",A:"🟢",B:"🟡",C:"🟡",D:"🔴",F:"🔴"}[grade];
+
+            let r = `## ${emoji} 건전성 등급: **${grade}**\n\n`;
+            r += `**전세 계약 추천:** ${recommend}\n\n---\n\n`;
+
+            if (risks.length) {
+                r += `### 🔴 핵심 위험 요소 (${risks.length}건)\n\n`;
+                risks.forEach(x => r += `1. **${x}**\n`);
+                r += `\n`;
+            }
+            if (cautions.length) {
+                r += `### 🟡 주의 사항 (${cautions.length}건)\n\n`;
+                cautions.forEach(x => r += `- ${x}\n`);
+                r += `\n`;
+            }
+            if (safes.length) {
+                r += `### 🟢 안전 지표 (${safes.length}건)\n\n`;
+                safes.forEach(x => r += `- ✅ ${x}\n`);
+                r += `\n`;
+            }
+
+            r += `### 📋 전세사기 법인 패턴 체크\n\n`;
+            r += `| 패턴 | 해당 여부 |\n|---|---|\n`;
+            r += `| 대표이사 잦은 변경 (2년 내 2회+) | ${t.includes('변경') && (t.includes('3회')||t.includes('5회')) ? '🔴 해당' : '✅ 미해당'} |\n`;
+            r += `| 자본잠식/극소 자본금 | ${t.includes('자본잠식') || (debtRatio > 500) ? '🔴 해당' : '✅ 미해당'} |\n`;
+            r += `| 대부업 사업목적 | ${t.includes('대부업') ? '🔴 해당' : '✅ 미해당'} |\n`;
+            r += `| 소규모 법인 + 다수 부동산 | ${properties > 30 ? '🔴 해당' : '✅ 미해당'} |\n`;
+            r += `| 잦은 본점 이전 | ${t.includes('이전') && (t.includes('2회')||t.includes('4회')) ? '🟡 의심' : '✅ 미해당'} |\n\n`;
+
+            r += `### 🛡️ 전세보증보험 가입 가능성\n\n`;
+            if (grade === 'F' || grade === 'D') r += `**가입 불가 가능성 높음** — HUG/SGI 심사 시 법인 재무건전성 미달 예상\n\n`;
+            else if (grade === 'C') r += `**조건부 가능** — 감정가 대비 보증금 비율에 따라 심사 결과 상이\n\n`;
+            else r += `**가입 가능 예상** — 재무건전성 양호하여 보증보험 심사 통과 가능성 높음\n\n`;
+
+            r += `### 📝 필수 특약 조항\n\n`;
+            r += `> 1. 임대인(법인)은 본 계약 기간 중 대표이사 변경, 합병, 분할, 해산 등 법인 구조 변경 시 임차인에게 즉시 서면 통보한다.\n\n`;
+            r += `> 2. 임대인은 임차인의 전세보증금반환보증보험 가입에 적극 협조하며, 거부 시 임차인은 계약을 해제할 수 있다.\n\n`;
+            r += `> 3. 임대인은 잔금일 전일까지 법인의 국세/지방세 완납증명서 및 법인등기부등본을 임차인에게 교부한다.\n\n`;
+
+            r += `---\n*내장 법인분석 엔진 v1.0*`;
+            return r;
+        }
+
+        // =========================================================================
+        // 유틸
+        // =========================================================================
+        function formatKRW(n) {
+            if (n === 0) return "0";
+            const abs = Math.abs(n);
+            const sign = n < 0 ? "-" : "";
+            if (abs >= 100000000) return `${sign}${(abs/100000000).toFixed(1)}억`;
+            if (abs >= 10000) return `${sign}${(abs/10000).toFixed(0)}만`;
+            return `${sign}${abs.toLocaleString()}`;
+        }
+
+        function switchTab(id) {
+            ["overviewTab","dartTab","newsTab","aiTab"].forEach(t => {
+                document.getElementById(`tabContent-${t}`).classList.add("hidden");
+                document.getElementById(`btn-${t}`).className = "border-b-2 border-transparent text-slate-500 hover:text-slate-800 px-3 text-sm font-bold flex items-center gap-1.5 transition";
+            });
+            document.getElementById(`tabContent-${id}`).classList.remove("hidden");
+            const c = {overviewTab:"orange",dartTab:"blue",newsTab:"green",aiTab:"purple"}[id];
+            document.getElementById(`btn-${id}`).className = `border-b-2 border-${c}-600 text-${c}-600 px-3 text-sm font-bold flex items-center gap-1.5 transition`;
+        }
+
+        function saveKeys() {
+            dartKey = document.getElementById("dart_api_key").value.trim();
+            NAVER.clientId = document.getElementById("naver_client_id").value.trim();
+            NAVER.clientSecret = document.getElementById("naver_client_secret").value.trim();
+            geminiKey = document.getElementById("gemini_api_key").value.trim();
+            if (dartKey) localStorage.setItem('corp_dart_key', dartKey);
+            if (NAVER.clientId) localStorage.setItem('corp_naver_id', NAVER.clientId);
+            if (NAVER.clientSecret) localStorage.setItem('corp_naver_secret', NAVER.clientSecret);
+            if (geminiKey) localStorage.setItem('corp_gemini_key', geminiKey);
+            showToast("API 키 저장 완료!"); closeModal('settingsModal');
+            if (selectedCorp && NAVER.clientId) loadCorpNews(selectedCorp);
+        }
+
+        function openModal(id) { document.getElementById(id).classList.remove("hidden"); }
+        function closeModal(id) { document.getElementById(id).classList.add("hidden"); }
+        function showToast(msg, icon="fa-circle-info", color="text-orange-400") {
+            const t=document.getElementById("toastMessage");
+            document.getElementById("toastIcon").className=`fa-solid ${icon} ${color} text-sm`;
+            document.getElementById("toastText").innerText=msg;
+            t.classList.remove("opacity-0");t.classList.add("opacity-100");
+            setTimeout(()=>{t.classList.remove("opacity-100");t.classList.add("opacity-0");},3000);
+        }
+    </script>
+</body>
+</html>
