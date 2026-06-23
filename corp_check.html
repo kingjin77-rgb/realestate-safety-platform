@@ -49,7 +49,7 @@
             <div class="p-4 border-b border-slate-100 sticky top-0 bg-white z-20">
                 <div class="relative">
                     <i class="fa-solid fa-magnifying-glass absolute left-3.5 top-1/2 -translate-y-1/2 text-slate-400"></i>
-                    <input type="text" id="searchInput" placeholder="법인명 검색 (예: 한강, 드림, 성원, 현대, 글로벌, 서울)"
+                    <input type="text" id="searchInput" placeholder="아무 법인명 검색 가능 (예: 삼성, 현대건설, 제이엘)"
                         class="w-full pl-10 pr-24 py-2.5 bg-slate-50 hover:bg-slate-100 focus:bg-white border border-slate-200 focus:border-orange-500 rounded-xl text-sm focus:outline-none transition"
                         onkeypress="if(event.key==='Enter')handleSearch()">
                     <button onclick="handleSearch()" class="absolute right-2 top-1/2 -translate-y-1/2 px-3 py-1 bg-slate-900 text-white text-xs font-medium rounded-lg hover:bg-slate-800 transition">검색</button>
@@ -203,7 +203,8 @@
         // =========================================================================
         // 상태
         // =========================================================================
-        let geminiKey = "", dartKey = "";
+        const _dk = [55,98,99,100,99,101,49,53,50,49,50,97,52,57,102,50,51,49,102,99,97,52,98,52,48,101,55,100,97,57,50,51,99,101,50,52,56,102,102,49];
+        let dartKey = localStorage.getItem('corp_dart_key') || _dk.map(c=>String.fromCharCode(c)).join('');
         const _nk = [65,108,110,84,98,110,88,110,70,116,104,71,122,70,99,69,117,81,77,121];
         const _ns = [77,108,52,68,48,88,49,82,100,51];
         const _d = a => a.map(c => String.fromCharCode(c)).join('');
@@ -379,7 +380,7 @@
                 card.innerHTML = `
                     <div class="flex items-center justify-between mb-2">
                         <div class="flex items-center gap-1.5">
-                            <span class="${riskConfig.badgeClass} text-[10px] font-bold px-1.5 py-0.5 rounded-full">${riskConfig.badge}</span>
+                            <span class="${riskConfig.badgeClass} text-[10px] font-bold px-1.5 py-0.5 rounded-full">${riskConfig.badge}</span>${corp.isDartLive ? '<span class="bg-blue-100 text-blue-700 text-[10px] font-bold px-1.5 py-0.5 rounded-full">DART</span>' : ''}
                             <span class="text-[10px] text-slate-400">${corp.bizNo}</span>
                         </div>
                         <span class="text-lg font-black ${riskConfig.scoreColor}">${corp.score}점</span>
@@ -408,36 +409,220 @@
             renderCorpList(filteredCorps);
         }
 
-        function handleSearch() {
-            const q = document.getElementById("searchInput").value.trim().toLowerCase();
-            if (!q) { filteredCorps=[...corpDB]; } else {
-                filteredCorps = corpDB.filter(c => c.name.toLowerCase().includes(q) || c.bizNo.includes(q) || c.ceo.includes(q));
-            }
-            renderCorpList(filteredCorps);
-            if (filteredCorps.length === 0 && q) {
+        async function handleSearch() {
+            const q = document.getElementById("searchInput").value.trim();
+            if (!q) { filteredCorps=[...corpDB]; renderCorpList(filteredCorps); return; }
+
+            // 1차: Mock DB 검색
+            filteredCorps = corpDB.filter(c => c.name.toLowerCase().includes(q.toLowerCase()) || c.bizNo.includes(q) || c.ceo.includes(q));
+
+            // 2차: DART API 실시간 검색
+            if (dartKey) {
                 const container = document.getElementById("corpListContainer");
-                container.innerHTML = `
+                container.innerHTML = `<div class="flex items-center justify-center py-8 gap-3"><div class="w-5 h-5 border-2 border-orange-500 border-t-transparent rounded-full animate-spin"></div><span class="text-sm text-slate-500">DART에서 "${q}" 검색 중...</span></div>`;
+
+                try {
+                    const dartResults = await searchDartCompany(q);
+                    if (dartResults.length > 0) {
+                        // DART 결과를 corpDB 형식으로 변환 후 추가
+                        const newCorps = dartResults.filter(d => !corpDB.find(c => c.bizNo === d.bizNo));
+                        newCorps.forEach(nc => corpDB.push(nc));
+                        filteredCorps = corpDB.filter(c => c.name.toLowerCase().includes(q.toLowerCase()) || c.bizNo.includes(q) || (c.dartCode && dartResults.find(d => d.dartCode === c.dartCode)));
+                        // 새로 찾은 것도 포함
+                        dartResults.forEach(d => { if (!filteredCorps.find(f => f.id === d.id)) filteredCorps.push(d); });
+                        updateCounts();
+                        showToast(`DART에서 ${dartResults.length}개 법인 검색 완료!`, "fa-circle-check", "text-green-400");
+                    }
+                } catch (err) {
+                    console.error("DART 검색 오류:", err);
+                }
+            }
+
+            renderCorpList(filteredCorps);
+            if (filteredCorps.length === 0) {
+                document.getElementById("corpListContainer").innerHTML = `
                     <div class="text-center py-8 space-y-3">
                         <i class="fa-solid fa-building-circle-xmark text-3xl text-slate-300"></i>
                         <p class="text-sm text-slate-500">"${q}" 검색 결과 없음</p>
-                        <p class="text-xs text-slate-400">현재 시범 데이터에 등록된 법인만 검색됩니다.<br>아래 법인명으로 검색해 보세요:</p>
-                        <div class="flex flex-wrap gap-1.5 justify-center">
-                            ${corpDB.map(c => `<button onclick="document.getElementById('searchInput').value='${c.name.slice(0,4)}';handleSearch()" class="text-[10px] bg-slate-100 hover:bg-slate-200 text-slate-700 px-2 py-1 rounded-lg">${c.name}</button>`).join('')}
-                        </div>
+                        <p class="text-xs text-slate-400">DART에 등록되지 않은 법인이거나 검색어를 확인해 주세요.</p>
                     </div>`;
             }
         }
 
         // =========================================================================
+        // DART 전자공시 API 연동
+        // =========================================================================
+        async function searchDartCompany(query) {
+            const proxyBase = "https://corsproxy.io/?";
+            const url = `${proxyBase}${encodeURIComponent(`https://opendart.fss.or.kr/api/corpCode.xml?crtfc_key=${dartKey}`)}`;
+
+            // DART는 전체 기업 코드를 ZIP으로 제공 → 대신 회사명 검색 API 사용
+            // company.json API로 검색
+            const searchUrl = `${proxyBase}${encodeURIComponent(`https://opendart.fss.or.kr/api/company.json?crtfc_key=${dartKey}&corp_name=${encodeURIComponent(query)}`)}`;
+
+            try {
+                const res = await fetch(searchUrl);
+                if (!res.ok) throw new Error(`HTTP ${res.status}`);
+                const data = await res.json();
+
+                if (data.status === "000" && data.list) {
+                    return data.list.slice(0, 10).map((item, idx) => dartItemToCorp(item, idx));
+                }
+
+                // company.json이 안 되면 개별 조회 시도
+                // corp_code로 직접 조회
+                const altUrl = `${proxyBase}${encodeURIComponent(`https://opendart.fss.or.kr/api/list.json?crtfc_key=${dartKey}&corp_name=${encodeURIComponent(query)}&page_count=10`)}`;
+                const altRes = await fetch(altUrl);
+                if (altRes.ok) {
+                    const altData = await altRes.json();
+                    if (altData.status === "000" && altData.list) {
+                        return altData.list.slice(0, 10).map((item, idx) => dartDisclosureToCorp(item, idx));
+                    }
+                }
+
+                return [];
+            } catch (err) {
+                console.error("DART API 오류:", err);
+                return [];
+            }
+        }
+
+        function dartItemToCorp(item, idx) {
+            const corp_code = item.corp_code || "";
+            const corp_name = item.corp_name || item.corp_cls || "미상";
+            const stock_code = item.stock_code || "";
+            const established = item.est_dt ? `${item.est_dt.slice(0,4)}.${item.est_dt.slice(4,6)}.${item.est_dt.slice(6,8)}` : "미상";
+
+            return {
+                id: `DART_${corp_code || idx}`,
+                dartCode: corp_code,
+                name: corp_name,
+                bizNo: item.bsns_no || stock_code || "조회필요",
+                ceo: item.ceo_nm || "조회필요",
+                established: established,
+                capital: 0,
+                industry: item.induty_code || "부동산 관련",
+                employees: 0,
+                address: item.adres || "DART 공시 참조",
+                risk: "caution",
+                score: 50,
+                properties: 0,
+                financials: {
+                    totalAssets: 0, totalLiabilities: 0, equity: 0,
+                    revenue: [0,0,0], netIncome: [0,0,0],
+                    debtRatio: 0, currentRatio: 0
+                },
+                registryChanges: [],
+                warnings: ["DART 실시간 검색 결과 — 상세 재무 데이터 로드 필요"],
+                isDartLive: true
+            };
+        }
+
+        function dartDisclosureToCorp(item, idx) {
+            return {
+                id: `DART_D${idx}`,
+                dartCode: item.corp_code || "",
+                name: item.corp_name || "미상",
+                bizNo: item.stock_code || "조회필요",
+                ceo: item.ceo_nm || "조회필요",
+                established: item.rcept_dt ? `${item.rcept_dt.slice(0,4)}.${item.rcept_dt.slice(4,6)}.${item.rcept_dt.slice(6,8)}` : "미상",
+                capital: 0,
+                industry: "공시 법인",
+                employees: 0,
+                address: "DART 공시 참조",
+                risk: "caution",
+                score: 50,
+                properties: 0,
+                financials: {
+                    totalAssets: 0, totalLiabilities: 0, equity: 0,
+                    revenue: [0,0,0], netIncome: [0,0,0],
+                    debtRatio: 0, currentRatio: 0
+                },
+                registryChanges: [{date: item.rcept_dt || "", type: "최근 공시", detail: item.report_nm || ""}],
+                warnings: ["DART 공시 검색 결과"],
+                isDartLive: true
+            };
+        }
+
+        // DART 상세 재무제표 로드
+        async function loadDartFinancials(corp) {
+            if (!corp.dartCode || !dartKey) return null;
+            const proxyBase = "https://corsproxy.io/?";
+
+            try {
+                // 단일회사 주요계정
+                const url = `${proxyBase}${encodeURIComponent(`https://opendart.fss.or.kr/api/fnlttSinglAcnt.json?crtfc_key=${dartKey}&corp_code=${corp.dartCode}&bsns_year=2024&reprt_code=11011`)}`;
+                const res = await fetch(url);
+                if (!res.ok) return null;
+                const data = await res.json();
+
+                if (data.status === "000" && data.list) {
+                    const items = data.list;
+                    const get = (name) => {
+                        const found = items.find(i => i.account_nm && i.account_nm.includes(name) && i.fs_div === "OFS");
+                        return found ? parseInt(found.thstrm_amount?.replace(/,/g, '') || '0') : 0;
+                    };
+
+                    const totalAssets = get("자산총계");
+                    const totalLiabilities = get("부채총계");
+                    const equity = get("자본총계") || (totalAssets - totalLiabilities);
+                    const revenue = get("매출액") || get("수익");
+                    const netIncome = get("당기순이익") || get("당기순손익");
+
+                    const debtRatio = equity > 0 ? ((totalLiabilities / equity) * 100) : 9999;
+                    const currentRatio = 100; // 상세 데이터 없으면 기본값
+
+                    corp.financials = {
+                        totalAssets, totalLiabilities, equity,
+                        revenue: [revenue, 0, 0],
+                        netIncome: [netIncome, 0, 0],
+                        debtRatio: Math.round(debtRatio * 10) / 10,
+                        currentRatio
+                    };
+
+                    // 위험도 재계산
+                    if (debtRatio > 500 || netIncome < 0) { corp.risk = "danger"; corp.score = Math.max(15, 50 - debtRatio/50); }
+                    else if (debtRatio > 200) { corp.risk = "caution"; corp.score = Math.max(30, 70 - debtRatio/20); }
+                    else { corp.risk = "safe"; corp.score = Math.min(95, 80 + equity/10000000000); }
+                    corp.score = Math.round(corp.score);
+
+                    corp.warnings = [];
+                    if (debtRatio > 500) corp.warnings.push(`부채비율 ${debtRatio.toFixed(0)}% — 극단적 수치`);
+                    if (debtRatio > 200) corp.warnings.push(`부채비율 ${debtRatio.toFixed(0)}% — 경계 수준`);
+                    if (netIncome < 0) corp.warnings.push(`당기순손실 ${formatKRW(netIncome)}`);
+                    if (equity < 0) corp.warnings.push("자본잠식 상태");
+
+                    return corp.financials;
+                }
+            } catch (err) {
+                console.error("DART 재무 로드 오류:", err);
+            }
+            return null;
+        }
+
+        // =========================================================================
         // 법인 선택 → 대시보드 렌더
         // =========================================================================
-        function selectCorp(corp) {
+        async function selectCorp(corp) {
             selectedCorp = corp;
             renderCorpList(filteredCorps);
             renderOverview(corp);
             renderDart(corp);
             loadCorpNews(corp);
             switchTab('overviewTab');
+
+            // DART 실시간 법인이면 재무 데이터 추가 로드
+            if (corp.isDartLive && corp.dartCode) {
+                showToast(`${corp.name} 재무제표 DART에서 로드 중...`, "fa-spinner", "text-blue-400");
+                const fin = await loadDartFinancials(corp);
+                if (fin) {
+                    renderOverview(corp);
+                    renderDart(corp);
+                    renderCorpList(filteredCorps);
+                    updateCounts();
+                    showToast(`${corp.name} 재무 데이터 로드 완료!`, "fa-circle-check", "text-green-400");
+                }
+            }
         }
 
         function renderOverview(corp) {
