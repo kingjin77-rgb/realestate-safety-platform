@@ -294,7 +294,7 @@
                             <span class="text-xs bg-purple-100 text-purple-700 px-2.5 py-1 rounded-full font-bold">
                                 <i class="fa-solid fa-clipboard-check"></i> 권리분석 진단 보고서
                             </span>
-                            <span class="text-xs text-slate-400">Gemini 2.5 Flash Engine</span>
+                            <span class="text-xs text-slate-400">내장 분석 엔진 v1.0</span>
                         </div>
                         <div id="aiResultContent" class="prose prose-slate max-w-full text-sm leading-relaxed space-y-4"></div>
                     </div>
@@ -376,26 +376,27 @@
                 <h4 class="text-xs font-bold text-slate-800 mb-2 flex items-center gap-1.5">
                     <i class="fa-solid fa-gavel text-blue-600"></i> 대법원 등기정보광장 API 키
                 </h4>
+                <p class="text-[10px] text-slate-400 mb-2"><a href="https://data.iros.go.kr" target="_blank" rel="noopener" class="text-blue-600 underline">data.iros.go.kr</a>에서 API 키 발급 후 입력</p>
                 <div class="space-y-2 max-h-[180px] overflow-y-auto pr-1">
                     <div>
                         <label class="block text-[10px] font-bold text-slate-700 mb-0.5">1. 확정일자 부여현황(지역별)</label>
-                        <input type="text" id="api_fixed_date" value="0dd9403917ad4f64b95e531d9fa96370" readonly
-                            class="w-full border border-slate-100 bg-slate-50 rounded-lg px-2.5 py-1.5 text-[11px] font-mono focus:outline-none">
+                        <input type="text" id="api_fixed_date" placeholder="IROS API Key 입력"
+                            class="w-full border border-slate-200 bg-white rounded-lg px-2.5 py-1.5 text-[11px] font-mono focus:outline-none focus:border-blue-500">
                     </div>
                     <div>
                         <label class="block text-[10px] font-bold text-slate-700 mb-0.5">2. 소유권이전등기(매매) 신청</label>
-                        <input type="text" id="api_ownership_transfer" value="c16fa6885db24f358ebe41d71dbb0cdc" readonly
-                            class="w-full border border-slate-100 bg-slate-50 rounded-lg px-2.5 py-1.5 text-[11px] font-mono focus:outline-none">
+                        <input type="text" id="api_ownership_transfer" placeholder="IROS API Key 입력"
+                            class="w-full border border-slate-200 bg-white rounded-lg px-2.5 py-1.5 text-[11px] font-mono focus:outline-none focus:border-blue-500">
                     </div>
                     <div>
                         <label class="block text-[10px] font-bold text-slate-700 mb-0.5">3. (근)저당권설정등기 신청</label>
-                        <input type="text" id="api_mortgage_establish" value="6771f3971804447aa317d50f56da45ab" readonly
-                            class="w-full border border-slate-100 bg-slate-50 rounded-lg px-2.5 py-1.5 text-[11px] font-mono focus:outline-none">
+                        <input type="text" id="api_mortgage_establish" placeholder="IROS API Key 입력"
+                            class="w-full border border-slate-200 bg-white rounded-lg px-2.5 py-1.5 text-[11px] font-mono focus:outline-none focus:border-blue-500">
                     </div>
                     <div>
                         <label class="block text-[10px] font-bold text-slate-700 mb-0.5">4. (근)저당권말소등기 신청</label>
-                        <input type="text" id="api_mortgage_termination" value="d0864cbbdede4a9ea272d7d9842914b4" readonly
-                            class="w-full border border-slate-100 bg-slate-50 rounded-lg px-2.5 py-1.5 text-[11px] font-mono focus:outline-none">
+                        <input type="text" id="api_mortgage_termination" placeholder="IROS API Key 입력"
+                            class="w-full border border-slate-200 bg-white rounded-lg px-2.5 py-1.5 text-[11px] font-mono focus:outline-none focus:border-blue-500">
                     </div>
                 </div>
             </div>
@@ -488,10 +489,10 @@
         const apiKey = ""; // Gemini API Key
 
         const API_KEYS = {
-            "FIXED_DATE": "0dd9403917ad4f64b95e531d9fa96370",
-            "OWNERSHIP_TRANSFER": "c16fa6885db24f358ebe41d71dbb0cdc",
-            "MORTGAGE_ESTABLISH": "6771f3971804447aa317d50f56da45ab",
-            "MORTGAGE_TERMINATION": "d0864cbbdede4a9ea272d7d9842914b4"
+            "FIXED_DATE": localStorage.getItem('iros_fixed_date') || "",
+            "OWNERSHIP_TRANSFER": localStorage.getItem('iros_ownership') || "",
+            "MORTGAGE_ESTABLISH": localStorage.getItem('iros_mortgage_est') || "",
+            "MORTGAGE_TERMINATION": localStorage.getItem('iros_mortgage_term') || ""
         };
 
         // ★ 네이버 API 설정
@@ -586,7 +587,10 @@
             updateMapMarkers();
             loadRegionData("마포 상암");
 
-            // localStorage에서 네이버 키 복원
+            // localStorage에서 키 복원
+            const irosRestore = [['iros_fixed_date','api_fixed_date','FIXED_DATE'],['iros_ownership','api_ownership_transfer','OWNERSHIP_TRANSFER'],['iros_mortgage_est','api_mortgage_establish','MORTGAGE_ESTABLISH'],['iros_mortgage_term','api_mortgage_termination','MORTGAGE_TERMINATION']];
+            irosRestore.forEach(([lsKey, elId, apiKey]) => { const v = localStorage.getItem(lsKey); if(v) { document.getElementById(elId).value = v; API_KEYS[apiKey] = v; } });
+
             const savedId = localStorage.getItem('naver_client_id');
             const savedSecret = localStorage.getItem('naver_client_secret');
             if (savedId && savedSecret) {
@@ -1072,32 +1076,37 @@
         // 6. 네이버 API 키 저장 및 연동 테스트
         // =========================================================================
         function saveNaverKeys() {
+            // IROS 키 저장
+            const irosFields = [
+                ['api_fixed_date', 'iros_fixed_date', 'FIXED_DATE'],
+                ['api_ownership_transfer', 'iros_ownership', 'OWNERSHIP_TRANSFER'],
+                ['api_mortgage_establish', 'iros_mortgage_est', 'MORTGAGE_ESTABLISH'],
+                ['api_mortgage_termination', 'iros_mortgage_term', 'MORTGAGE_TERMINATION']
+            ];
+            irosFields.forEach(([elId, lsKey, apiKey]) => {
+                const v = document.getElementById(elId).value.trim();
+                if (v) { localStorage.setItem(lsKey, v); API_KEYS[apiKey] = v; }
+            });
+
+            // 네이버 키 저장
             const clientId = document.getElementById("naver_client_id").value.trim();
             const clientSecret = document.getElementById("naver_client_secret").value.trim();
 
-            if (!clientId || !clientSecret) {
-                showToast("Client ID와 Client Secret을 모두 입력해 주세요.", "fa-circle-exclamation", "text-rose-400");
-                return;
+            if (clientId && clientSecret) {
+                NAVER_CONFIG.clientId = clientId;
+                NAVER_CONFIG.clientSecret = clientSecret;
+                state.naverLiveMode = true;
+                localStorage.setItem('naver_client_id', clientId);
+                localStorage.setItem('naver_client_secret', clientSecret);
+                document.getElementById("naverStatusLabel").innerText = "실시간 API 연동";
+                document.getElementById("datalabStatusBadge").innerText = "API 연동됨";
+                document.getElementById("datalabStatusBadge").className = "text-[10px] bg-green-500 text-white px-1.5 py-0.5 rounded font-bold";
             }
 
-            NAVER_CONFIG.clientId = clientId;
-            NAVER_CONFIG.clientSecret = clientSecret;
-            state.naverLiveMode = true;
-
-            // localStorage 저장
-            localStorage.setItem('naver_client_id', clientId);
-            localStorage.setItem('naver_client_secret', clientSecret);
-
-            document.getElementById("naverStatusLabel").innerText = "실시간 API 연동";
-            document.getElementById("datalabStatusBadge").innerText = "API 연동됨";
-            document.getElementById("datalabStatusBadge").className = "text-[10px] bg-green-500 text-white px-1.5 py-0.5 rounded font-bold";
-
-            showToast("네이버 API 키가 저장되었습니다. 실시간 검색 모드 활성화!", "fa-circle-check", "text-green-400");
+            showToast("API 키가 저장되었습니다!", "fa-circle-check", "text-green-400");
             closeModal('settingsModal');
 
-            // 즉시 현재 지역 데이터 라이브 로드
-            loadLiveNaverFeeds();
-            loadDatalabTrend();
+            if (state.naverLiveMode) { loadLiveNaverFeeds(); loadDatalabTrend(); }
         }
 
         // =========================================================================
