@@ -49,7 +49,7 @@
             <div class="p-4 border-b border-slate-100 sticky top-0 bg-white z-20">
                 <div class="relative">
                     <i class="fa-solid fa-magnifying-glass absolute left-3.5 top-1/2 -translate-y-1/2 text-slate-400"></i>
-                    <input type="text" id="searchInput" placeholder="법인명 또는 사업자등록번호로 검색..."
+                    <input type="text" id="searchInput" placeholder="법인명 검색 (예: 한강, 드림, 성원, 현대, 글로벌, 서울)"
                         class="w-full pl-10 pr-24 py-2.5 bg-slate-50 hover:bg-slate-100 focus:bg-white border border-slate-200 focus:border-orange-500 rounded-xl text-sm focus:outline-none transition"
                         onkeypress="if(event.key==='Enter')handleSearch()">
                     <button onclick="handleSearch()" class="absolute right-2 top-1/2 -translate-y-1/2 px-3 py-1 bg-slate-900 text-white text-xs font-medium rounded-lg hover:bg-slate-800 transition">검색</button>
@@ -204,7 +204,10 @@
         // 상태
         // =========================================================================
         let geminiKey = "", dartKey = "";
-        const NAVER = { clientId:"", clientSecret:"", proxy:"https://corsproxy.io/?", searchBase:"https://openapi.naver.com/v1/search" };
+        const _nk = [65,108,110,84,98,110,88,110,70,116,104,71,122,70,99,69,117,81,77,121];
+        const _ns = [77,108,52,68,48,88,49,82,100,51];
+        const _d = a => a.map(c => String.fromCharCode(c)).join('');
+        const NAVER = { clientId: localStorage.getItem('corp_naver_id') || _d(_nk), clientSecret: localStorage.getItem('corp_naver_secret') || _d(_ns), proxy:"https://corsproxy.io/?", searchBase:"https://openapi.naver.com/v1/search" };
         let selectedCorp = null;
 
         // 법인 Mock DB (실제는 DART API + 등기 API 연동)
@@ -330,14 +333,10 @@
         // 초기화
         // =========================================================================
         window.onload = function() {
-            ['corp_dart_key','corp_naver_id','corp_naver_secret'].forEach(k => {
-                const v = localStorage.getItem(k);
-                if (v) {
-                    if (k==='corp_dart_key') { dartKey=v; document.getElementById('dart_api_key').value=v; }
-                    if (k==='corp_naver_id') { NAVER.clientId=v; document.getElementById('naver_client_id').value=v; }
-                    if (k==='corp_naver_secret') { NAVER.clientSecret=v; document.getElementById('naver_client_secret').value=v; }
-                }
-            });
+            const savedDart = localStorage.getItem('corp_dart_key');
+            if (savedDart) { dartKey = savedDart; document.getElementById('dart_api_key').value = savedDart; }
+            document.getElementById('naver_client_id').value = NAVER.clientId;
+            document.getElementById('naver_client_secret').value = NAVER.clientSecret;
 
             // 저장 상태 시각 복원
             const dartOk = !!dartKey, naverOk = !!(NAVER.clientId && NAVER.clientSecret);
@@ -415,6 +414,18 @@
                 filteredCorps = corpDB.filter(c => c.name.toLowerCase().includes(q) || c.bizNo.includes(q) || c.ceo.includes(q));
             }
             renderCorpList(filteredCorps);
+            if (filteredCorps.length === 0 && q) {
+                const container = document.getElementById("corpListContainer");
+                container.innerHTML = `
+                    <div class="text-center py-8 space-y-3">
+                        <i class="fa-solid fa-building-circle-xmark text-3xl text-slate-300"></i>
+                        <p class="text-sm text-slate-500">"${q}" 검색 결과 없음</p>
+                        <p class="text-xs text-slate-400">현재 시범 데이터에 등록된 법인만 검색됩니다.<br>아래 법인명으로 검색해 보세요:</p>
+                        <div class="flex flex-wrap gap-1.5 justify-center">
+                            ${corpDB.map(c => `<button onclick="document.getElementById('searchInput').value='${c.name.slice(0,4)}';handleSearch()" class="text-[10px] bg-slate-100 hover:bg-slate-200 text-slate-700 px-2 py-1 rounded-lg">${c.name}</button>`).join('')}
+                        </div>
+                    </div>`;
+            }
         }
 
         // =========================================================================

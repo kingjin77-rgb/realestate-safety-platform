@@ -1,0 +1,178 @@
+<!DOCTYPE html>
+<html lang="ko">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>법인체크 사용 매뉴얼</title>
+    <script src="https://cdn.tailwindcss.com"></script>
+    <link href="https://fonts.googleapis.com/css2?family=Noto+Sans+KR:wght@400;700;900&display=swap" rel="stylesheet">
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css">
+    <style>body{font-family:'Noto Sans KR',sans-serif;} .step-num{width:28px;height:28px;min-width:28px;}</style>
+</head>
+<body class="bg-white text-slate-800">
+    <div class="max-w-3xl mx-auto px-6 py-12">
+
+        <div class="text-center mb-12">
+            <div class="inline-flex bg-orange-600 text-white p-3 rounded-2xl mb-4"><i class="fa-solid fa-building-shield text-3xl"></i></div>
+            <h1 class="text-3xl font-black text-slate-900">법인체크 사용 매뉴얼</h1>
+            <p class="text-slate-500 mt-2">임대인 법인 건전성 분석기 — 완전 가이드</p>
+            <a href="corp_check.html" class="inline-block mt-4 bg-orange-600 text-white text-sm font-bold px-6 py-2 rounded-xl hover:bg-orange-700 transition">앱 바로가기 <i class="fa-solid fa-arrow-right"></i></a>
+        </div>
+
+        <div class="bg-orange-50 border border-orange-200 rounded-2xl p-6 mb-10">
+            <h2 class="font-bold text-orange-800 mb-2"><i class="fa-solid fa-info-circle"></i> 이 앱은 무엇인가요?</h2>
+            <p class="text-sm text-slate-700 leading-relaxed">
+                <b>법인체크</b>는 임대인이 법인(회사)일 때 그 법인의 <b>재무제표, 부채비율, 등기 변동 이력</b>을 분석하여
+                <b>전세사기 법인 패턴</b>에 해당하는지 자동 판별하고, 계약 가능 여부를 <b>AI가 종합 진단</b>해주는 도구입니다.
+            </p>
+        </div>
+
+        <div class="bg-rose-50 border border-rose-200 rounded-2xl p-5 mb-10">
+            <h3 class="font-bold text-rose-800 mb-2"><i class="fa-solid fa-triangle-exclamation"></i> 왜 법인 임대인을 확인해야 하나요?</h3>
+            <ul class="text-sm text-slate-700 space-y-1.5 list-disc list-inside">
+                <li>전세사기의 <b>70% 이상</b>이 법인(갭투자 회사) 소유 부동산에서 발생</li>
+                <li>자본금 1억 미만으로 수십~수백 채 보유하는 <b>깡통 법인</b>이 핵심 위험</li>
+                <li>대표이사를 자주 바꿔 <b>책임 회피</b>하는 패턴이 전형적</li>
+                <li>개인 임대인과 달리 <b>파산 시 보증금 회수 극히 어려움</b></li>
+            </ul>
+        </div>
+
+        <h2 class="text-xl font-black text-slate-900 mb-4 border-b border-slate-200 pb-2">1. 화면 구성</h2>
+        <div class="space-y-4 mb-10">
+            <div class="flex gap-4 items-start">
+                <div class="step-num bg-slate-900 text-white rounded-lg flex items-center justify-center font-bold text-sm shrink-0">A</div>
+                <div><b>왼쪽 패널</b> — 법인 검색, 위험/주의/안전 필터, 법인 리스트 카드</div>
+            </div>
+            <div class="flex gap-4 items-start">
+                <div class="step-num bg-slate-900 text-white rounded-lg flex items-center justify-center font-bold text-sm shrink-0">B</div>
+                <div><b>오른쪽 탭 4개</b>
+                    <ul class="text-sm text-slate-600 mt-1 space-y-1 list-disc list-inside">
+                        <li><b>건전성 대시보드</b> — 종합 점수, 핵심 지표, 경고, 등기 변동 이력</li>
+                        <li><b>DART 재무 공시</b> — 재무상태표, 3년 손익, 부채비율/유동비율 게이지</li>
+                        <li><b>네이버 뉴스/블로그</b> — 법인명으로 실시간 뉴스 검색</li>
+                        <li><b>AI 종합 진단</b> — 건전성 등급 + 전세사기 패턴 매칭 + 필수 특약</li>
+                    </ul>
+                </div>
+            </div>
+        </div>
+
+        <h2 class="text-xl font-black text-slate-900 mb-4 border-b border-slate-200 pb-2">2. 주요 기능 사용법</h2>
+
+        <div class="bg-slate-50 rounded-2xl p-5 mb-4">
+            <h3 class="font-bold text-slate-900 mb-3 flex items-center gap-2">
+                <span class="step-num bg-orange-600 text-white rounded-lg flex items-center justify-center font-bold text-sm">1</span>
+                법인 검색 & 선택
+            </h3>
+            <ol class="text-sm text-slate-700 space-y-2 list-decimal list-inside">
+                <li>검색창에 <b>법인명</b> 또는 <b>사업자등록번호</b> 입력</li>
+                <li>필터 버튼으로 <b>위험/주의/안전</b> 법인만 표시 가능</li>
+                <li>법인 카드 클릭 → 오른쪽에 상세 분석 대시보드 표시</li>
+                <li>카드 왼쪽 색상 바: 🟢 안전 / 🟡 주의 / 🔴 위험</li>
+            </ol>
+        </div>
+
+        <div class="bg-slate-50 rounded-2xl p-5 mb-4">
+            <h3 class="font-bold text-slate-900 mb-3 flex items-center gap-2">
+                <span class="step-num bg-orange-600 text-white rounded-lg flex items-center justify-center font-bold text-sm">2</span>
+                건전성 대시보드 읽기
+            </h3>
+            <div class="text-sm text-slate-700 space-y-3">
+                <p><b>종합 점수</b> — 100점 만점 게이지 바</p>
+                <ul class="list-disc list-inside ml-4 space-y-1">
+                    <li>80점+ = 안심 | 50~79점 = 주의 | 50점 미만 = 위험</li>
+                </ul>
+                <p><b>핵심 지표 4가지</b></p>
+                <ul class="list-disc list-inside ml-4 space-y-1">
+                    <li><b>자본금</b> — 1억 이하이면서 부동산 다수 보유 시 위험</li>
+                    <li><b>부채비율</b> — 200% 이하 안전, 300%+ 경고, 500%+ 위험</li>
+                    <li><b>유동비율</b> — 100% 이상 안전, 미만이면 단기 지급 능력 부족</li>
+                    <li><b>보유 부동산</b> — 자본금 대비 과다 보유 시 갭투자 의심</li>
+                </ul>
+                <p><b>위험/주의 사항</b> — 빨간/노란 박스로 구체적 경고 표시</p>
+                <p><b>등기 변동 이력</b> — 대표이사 변경, 본점 이전, 자본금 변경 등 타임라인</p>
+            </div>
+        </div>
+
+        <div class="bg-slate-50 rounded-2xl p-5 mb-4">
+            <h3 class="font-bold text-slate-900 mb-3 flex items-center gap-2">
+                <span class="step-num bg-orange-600 text-white rounded-lg flex items-center justify-center font-bold text-sm">3</span>
+                DART 재무 공시 탭
+            </h3>
+            <ol class="text-sm text-slate-700 space-y-2 list-decimal list-inside">
+                <li><b>"DART 재무 공시"</b> 탭 클릭</li>
+                <li>재무상태표: 총자산 / 총부채 / 자본총계 한눈에 확인</li>
+                <li>3년 추이: 매출액과 당기순이익 변화 (적자 시 빨간색 표시)</li>
+                <li>부채비율·유동비율 게이지 바 — 안전기준 대비 시각 비교</li>
+            </ol>
+            <div class="mt-3 bg-white border border-slate-200 rounded-xl p-3 text-xs text-slate-600">
+                <b>핵심:</b> 부채비율 200% 초과 + 3년 연속 적자 = 전세 계약 비추천
+            </div>
+        </div>
+
+        <div class="bg-orange-50 rounded-2xl p-5 mb-4">
+            <h3 class="font-bold text-slate-900 mb-3 flex items-center gap-2">
+                <span class="step-num bg-orange-600 text-white rounded-lg flex items-center justify-center font-bold text-sm">4</span>
+                AI 종합 진단 (핵심 기능)
+            </h3>
+            <ol class="text-sm text-slate-700 space-y-2 list-decimal list-inside">
+                <li>법인 선택 후 대시보드 하단 <b>"이 법인 AI 종합 건전성 진단"</b> 클릭</li>
+                <li>또는 <b>"AI 종합 진단"</b> 탭에서 법인 정보 직접 입력</li>
+                <li>분석 결과:
+                    <ul class="mt-1 space-y-1 list-disc list-inside ml-4">
+                        <li><b>건전성 등급</b> S ~ F (S=최우수, F=위험)</li>
+                        <li><b>전세 계약 추천</b> — 안전/주의 후 계약/비추천/강력 비추천</li>
+                        <li><b>전세사기 패턴 체크표</b> — 5가지 패턴 해당 여부 표로 표시</li>
+                        <li><b>보증보험 가입 가능성</b> — 가능/조건부/불가 예상</li>
+                        <li><b>필수 특약 조항 3개</b> — 그대로 계약서에 복사 가능</li>
+                    </ul>
+                </li>
+            </ol>
+        </div>
+
+        <div class="bg-slate-50 rounded-2xl p-5 mb-10">
+            <h3 class="font-bold text-slate-900 mb-3 flex items-center gap-2">
+                <span class="step-num bg-orange-600 text-white rounded-lg flex items-center justify-center font-bold text-sm">5</span>
+                네이버 뉴스 검색
+            </h3>
+            <ol class="text-sm text-slate-700 space-y-2 list-decimal list-inside">
+                <li>법인 선택 시 자동으로 <b>법인명</b>으로 네이버 뉴스 검색</li>
+                <li>위험 키워드(사기, 부도, 압류, 횡령, 파산 등) 감지 시 <b>빨간 주의 배지</b></li>
+                <li>뉴스 카드 클릭 → 원문 페이지로 이동</li>
+            </ol>
+        </div>
+
+        <h2 class="text-xl font-black text-slate-900 mb-4 border-b border-slate-200 pb-2">3. 전세사기 법인 5대 패턴</h2>
+        <div class="overflow-x-auto mb-10">
+            <table class="w-full text-sm">
+                <thead><tr class="bg-rose-50"><th class="p-3 text-left">패턴</th><th class="p-3 text-left">설명</th><th class="p-3 text-left">위험도</th></tr></thead>
+                <tbody>
+                    <tr class="border-t"><td class="p-3 font-bold">대표이사 잦은 변경</td><td class="p-3">2년 내 2회 이상 → "바지사장" 세워 책임 회피</td><td class="p-3 text-rose-600 font-bold">매우 높음</td></tr>
+                    <tr class="border-t"><td class="p-3 font-bold">자본잠식</td><td class="p-3">부채가 자본 초과 → 보증금 반환 재원 없음</td><td class="p-3 text-rose-600 font-bold">매우 높음</td></tr>
+                    <tr class="border-t"><td class="p-3 font-bold">대부업 사업목적</td><td class="p-3">사업목적에 "대부업" 포함 → 고금리 자금 조달</td><td class="p-3 text-rose-600 font-bold">매우 높음</td></tr>
+                    <tr class="border-t"><td class="p-3 font-bold">소자본 다수 부동산</td><td class="p-3">자본금 1억으로 100채+ → 전형적 갭투자 법인</td><td class="p-3 text-rose-600 font-bold">매우 높음</td></tr>
+                    <tr class="border-t"><td class="p-3 font-bold">잦은 본점 이전</td><td class="p-3">1년 내 2회+ → 채권자 추적 회피</td><td class="p-3 text-amber-600 font-bold">높음</td></tr>
+                </tbody>
+            </table>
+        </div>
+
+        <h2 class="text-xl font-black text-slate-900 mb-4 border-b border-slate-200 pb-2">4. 주요 용어</h2>
+        <div class="overflow-x-auto mb-10">
+            <table class="w-full text-sm">
+                <thead><tr class="bg-slate-100"><th class="p-3 text-left">용어</th><th class="p-3 text-left">설명</th></tr></thead>
+                <tbody>
+                    <tr class="border-t"><td class="p-3 font-bold">부채비율</td><td class="p-3">부채 ÷ 자본 × 100. 200% 이하 권장</td></tr>
+                    <tr class="border-t"><td class="p-3 font-bold">유동비율</td><td class="p-3">유동자산 ÷ 유동부채 × 100. 100% 이상이면 단기 지급 가능</td></tr>
+                    <tr class="border-t"><td class="p-3 font-bold">자본잠식</td><td class="p-3">누적 적자로 자본금이 잠식된 상태. 법적 존속 위험</td></tr>
+                    <tr class="border-t"><td class="p-3 font-bold">DART</td><td class="p-3">금융감독원 전자공시시스템. 상장/비상장 법인 재무제표 공개</td></tr>
+                    <tr class="border-t"><td class="p-3 font-bold">갭투자</td><td class="p-3">전세보증금으로 매입 자금 조달. 역전세 시 보증금 반환 불가</td></tr>
+                    <tr class="border-t"><td class="p-3 font-bold">전세보증보험</td><td class="p-3">HUG/SGI에서 가입. 임대인 파산 시에도 보증금 반환 보장</td></tr>
+                </tbody>
+            </table>
+        </div>
+
+        <div class="text-center text-slate-400 text-xs py-8 border-t border-slate-100">
+            부동산 안심 플랫폼 — 법인체크 매뉴얼 v1.0
+        </div>
+    </div>
+</body>
+</html>

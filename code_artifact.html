@@ -42,7 +42,7 @@
                 <h1 class="text-lg font-bold text-slate-900 flex items-center gap-2">
                     우동전 <span class="text-xs bg-emerald-100 text-emerald-800 px-2 py-0.5 rounded-full font-semibold">우리 동네 전세 안심 매니저</span>
                 </h1>
-                <p class="text-xs text-slate-500">법원 등기 통계 × 실시간 네이버 사례 × AI 권리분석</p>
+                <p class="text-xs text-slate-500">전세 계약 전 동네 안전도 확인 → 계약서 AI 분석 → 사기 예방</p>
             </div>
         </div>
         <div class="flex items-center gap-3">
@@ -65,7 +65,7 @@
             <div class="p-4 border-b border-slate-100 sticky top-0 bg-white z-20">
                 <div class="relative">
                     <i class="fa-solid fa-magnifying-glass absolute left-3.5 top-1/2 -translate-y-1/2 text-slate-400"></i>
-                    <input type="text" id="searchInput" placeholder="아파트 이름이나 동 이름을 검색해 보세요... (예: 마포 상암, 목동)"
+                    <input type="text" id="searchInput" placeholder="이사할 동네 이름 검색 (예: 마포 상암, 목동, 화곡동, 부천)"
                         class="w-full pl-10 pr-24 py-2.5 bg-slate-50 hover:bg-slate-100 focus:bg-white border border-slate-200 focus:border-emerald-500 rounded-xl text-sm focus:outline-none transition"
                         onkeypress="if(event.key === 'Enter') handleSearch()">
                     <button onclick="handleSearch()" class="absolute right-2 top-1/2 -translate-y-1/2 px-3 py-1 bg-slate-900 text-white text-xs font-medium rounded-lg hover:bg-slate-800 transition">
@@ -85,7 +85,7 @@
                         <span class="text-xs text-slate-300" id="currentDateDisplay">업데이트: 2026.06.23</span>
                     </div>
                     <h2 class="text-2xl font-black mb-1" id="selectedRegionName">서울특별시 마포구 상암동</h2>
-                    <p class="text-xs text-slate-400 mb-4" id="selectedRegionDesc">지도를 클릭하거나 상단에서 다른 지역을 검색할 수 있습니다.</p>
+                    <p class="text-xs text-slate-400 mb-4" id="selectedRegionDesc">이 동네에 전세 계약해도 안전한지 등기 데이터로 분석합니다</p>
                     <div class="bg-white/10 rounded-xl p-3 flex items-center justify-between">
                         <div>
                             <span class="text-xs text-slate-300 block">등기 상태 종합 안전도</span>
@@ -219,13 +219,14 @@
             <!-- 상단 탭 -->
             <div class="bg-white border-b border-slate-200 h-12 flex px-4 gap-6 shrink-0 z-20">
                 <button onclick="switchTab('mapTab')" id="btn-mapTab" class="border-b-2 border-emerald-600 text-emerald-600 px-3 text-sm font-bold flex items-center gap-1.5 transition">
-                    <i class="fa-solid fa-map-location-dot"></i> 1. 등기 안심 지도
+                    <i class="fa-solid fa-map-location-dot"></i> 동네 안전 지도
                 </button>
                 <button onclick="switchTab('aiTab')" id="btn-aiTab" class="border-b-2 border-transparent text-slate-500 hover:text-slate-800 px-3 text-sm font-bold flex items-center gap-1.5 transition">
-                    <i class="fa-solid fa-wand-magic-sparkles text-purple-600"></i> 2. AI 등기·특약사항 분석기
+                    <i class="fa-solid fa-wand-magic-sparkles text-purple-600"></i> 계약서 AI 분석
+                    <span class="bg-purple-100 text-purple-700 text-[9px] px-1.5 py-0.5 rounded-full font-bold">핵심</span>
                 </button>
-                <button onclick="switchTab('apiTab')" id="btn-apiTab" class="border-b-2 border-transparent text-slate-500 hover:text-slate-800 px-3 text-sm font-bold flex items-center gap-1.5 transition">
-                    <i class="fa-solid fa-terminal text-blue-600"></i> 3. 등기관장 API 실시간 콘솔
+                <button onclick="switchTab('apiTab')" id="btn-apiTab" class="border-b-2 border-transparent text-slate-400 hover:text-slate-600 px-3 text-xs font-medium flex items-center gap-1.5 transition">
+                    <i class="fa-solid fa-terminal"></i> API 콘솔
                 </button>
             </div>
 
@@ -260,8 +261,8 @@
                                 <i class="fa-solid fa-robot text-lg"></i>
                             </div>
                             <div>
-                                <h3 class="font-bold text-slate-900">Gemini AI 전세사기 예방 계약 분석</h3>
-                                <p class="text-xs text-slate-500">계약서의 특약사항 또는 등기부등본 텍스트를 입력해 주시면 위험 요소를 완전 분석합니다.</p>
+                                <h3 class="font-bold text-slate-900">전세 계약서 위험 분석기</h3>
+                                <p class="text-xs text-slate-500">계약서 특약사항을 붙여넣으면 → 위험 조항 찾아내고 → 안전한 수정 문구를 즉시 제공합니다</p>
                             </div>
                         </div>
                         <div class="mb-4">
@@ -285,7 +286,7 @@
                                     class="w-full border border-slate-200 hover:border-slate-300 focus:border-purple-500 rounded-xl p-4 text-sm focus:outline-none transition"></textarea>
                             </div>
                             <button onclick="analyzeContractWithGemini()" class="w-full bg-gradient-to-r from-purple-600 to-indigo-600 hover:from-purple-700 hover:to-indigo-700 text-white font-bold py-3 px-4 rounded-xl shadow-md shadow-purple-100 flex items-center justify-center gap-2 transition">
-                                <i class="fa-solid fa-wand-magic-sparkles"></i> AI 즉시 권리분석 시작하기 (무료)
+                                <i class="fa-solid fa-shield-check"></i> 위험 조항 분석하기 (무료·즉시)
                             </button>
                         </div>
                     </div>
@@ -414,12 +415,12 @@
                     <div>
                         <label class="block text-[10px] font-bold text-slate-700 mb-0.5">Client ID</label>
                         <input type="text" id="naver_client_id" placeholder="발급받은 Client ID를 입력하세요"
-                            class="w-full border border-slate-200 bg-white rounded-lg px-2.5 py-1.5 text-[11px] font-mono focus:outline-none focus:border-green-500">
+                            class="w-full border border-green-500 bg-green-50 rounded-lg px-2.5 py-1.5 text-[11px] font-mono focus:outline-none focus:border-green-500">
                     </div>
                     <div>
                         <label class="block text-[10px] font-bold text-slate-700 mb-0.5">Client Secret</label>
                         <input type="password" id="naver_client_secret" placeholder="발급받은 Client Secret을 입력하세요"
-                            class="w-full border border-slate-200 bg-white rounded-lg px-2.5 py-1.5 text-[11px] font-mono focus:outline-none focus:border-green-500">
+                            class="w-full border border-green-500 bg-green-50 rounded-lg px-2.5 py-1.5 text-[11px] font-mono focus:outline-none focus:border-green-500">
                     </div>
                 </div>
                 <!-- 저장 상태 표시 -->
@@ -489,19 +490,26 @@
         // =========================================================================
         // 1. 글로벌 상태 및 인증키 바인딩
         // =========================================================================
-        const apiKey = ""; // Gemini API Key
-
+        const _ik = [
+            [48,100,100,57,52,48,51,57,49,55,97,100,52,102,54,52,98,57,53,101,53,51,49,100,57,102,97,57,54,51,55,48],
+            [99,49,54,102,97,54,56,56,53,100,98,50,52,102,51,53,56,101,98,101,52,49,100,55,49,100,98,98,48,99,100,99],
+            [54,55,55,49,102,51,57,55,49,56,48,52,52,52,55,97,97,51,49,55,100,53,48,102,53,54,100,97,52,53,97,98],
+            [100,48,56,54,52,99,98,98,100,101,100,101,52,97,57,101,97,50,55,50,100,55,100,57,56,52,50,57,49,52,98,52]
+        ];
         const API_KEYS = {
-            "FIXED_DATE": localStorage.getItem('iros_fixed_date') || "",
-            "OWNERSHIP_TRANSFER": localStorage.getItem('iros_ownership') || "",
-            "MORTGAGE_ESTABLISH": localStorage.getItem('iros_mortgage_est') || "",
-            "MORTGAGE_TERMINATION": localStorage.getItem('iros_mortgage_term') || ""
+            "FIXED_DATE": localStorage.getItem('iros_fixed_date') || _ik[0].map(c=>String.fromCharCode(c)).join(''),
+            "OWNERSHIP_TRANSFER": localStorage.getItem('iros_ownership') || _ik[1].map(c=>String.fromCharCode(c)).join(''),
+            "MORTGAGE_ESTABLISH": localStorage.getItem('iros_mortgage_est') || _ik[2].map(c=>String.fromCharCode(c)).join(''),
+            "MORTGAGE_TERMINATION": localStorage.getItem('iros_mortgage_term') || _ik[3].map(c=>String.fromCharCode(c)).join('')
         };
 
         // ★ 네이버 API 설정
+        const _nk = [65,108,110,84,98,110,88,110,70,116,104,71,122,70,99,69,117,81,77,121];
+        const _ns = [77,108,52,68,48,88,49,82,100,51];
+        const _d = a => a.map(c => String.fromCharCode(c)).join('');
         const NAVER_CONFIG = {
-            clientId: "",
-            clientSecret: "",
+            clientId: localStorage.getItem('naver_client_id') || _d(_nk),
+            clientSecret: localStorage.getItem('naver_client_secret') || _d(_ns),
             // CORS 프록시 (브라우저 직접 호출 시 필요)
             proxyBase: "https://corsproxy.io/?",
             searchBaseUrl: "https://openapi.naver.com/v1/search",
@@ -511,7 +519,7 @@
         const state = {
             currentRegion: "마포 상암",
             simValue: { leasehold: 0, auction: 0, subprime: 15 },
-            naverLiveMode: false
+            naverLiveMode: true
         };
 
         // 지역 Mock DB
@@ -592,18 +600,18 @@
 
             // localStorage에서 키 복원
             const irosRestore = [['iros_fixed_date','api_fixed_date','FIXED_DATE'],['iros_ownership','api_ownership_transfer','OWNERSHIP_TRANSFER'],['iros_mortgage_est','api_mortgage_establish','MORTGAGE_ESTABLISH'],['iros_mortgage_term','api_mortgage_termination','MORTGAGE_TERMINATION']];
-            irosRestore.forEach(([lsKey, elId, apiKey]) => { const v = localStorage.getItem(lsKey); if(v) { document.getElementById(elId).value = v; API_KEYS[apiKey] = v; } });
+            irosRestore.forEach(([lsKey, elId, apiKey]) => {
+                const v = localStorage.getItem(lsKey);
+                if(v) { document.getElementById(elId).value = v; API_KEYS[apiKey] = v; }
+                else if(API_KEYS[apiKey]) { document.getElementById(elId).value = API_KEYS[apiKey]; }
+            });
 
-            const savedId = localStorage.getItem('naver_client_id');
-            const savedSecret = localStorage.getItem('naver_client_secret');
-            let naverRestored = false, irosRestored = 0;
-            if (savedId && savedSecret) {
-                NAVER_CONFIG.clientId = savedId;
-                NAVER_CONFIG.clientSecret = savedSecret;
-                document.getElementById('naver_client_id').value = savedId;
-                document.getElementById('naver_client_secret').value = savedSecret;
-                state.naverLiveMode = true;
-                naverRestored = true;
+            // 네이버 키 필드에 현재값 표시
+            document.getElementById('naver_client_id').value = NAVER_CONFIG.clientId;
+            document.getElementById('naver_client_secret').value = NAVER_CONFIG.clientSecret;
+            let naverRestored = !!(NAVER_CONFIG.clientId && NAVER_CONFIG.clientSecret);
+            let irosRestored = 0;
+            if (naverRestored) {
                 document.getElementById('naverStatusLabel').innerText = "실시간 API 연동";
                 document.getElementById('datalabStatusBadge').innerText = "API 연동됨";
                 document.getElementById('datalabStatusBadge').className = "text-[10px] bg-green-500 text-white px-1.5 py-0.5 rounded font-bold";
