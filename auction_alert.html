@@ -358,28 +358,119 @@
         const _d = a => a.map(c => String.fromCharCode(c)).join('');
         const NAVER = { clientId: localStorage.getItem('auction_naver_id') || _d(_nk), clientSecret: localStorage.getItem('auction_naver_secret') || _d(_ns), proxy: "https://corsproxy.io/?", searchBase: "https://openapi.naver.com/v1/search", datalabUrl: "https://openapi.naver.com/v1/datalab/search" };
 
-        const auctionDB = [
-            { id: "2026타경10234", court: "서울서부", region: "마포구", type: "apt", name: "마포래미안푸르지오 102동 1501호", area: "84.9㎡", appraisal: 112000, minBid: 89600, failCount: 1, bidDate: "2026.07.05", bidders: 8, status: "진행중", lat: 37.5535, lng: 126.9368, tenants: 1, mortgage: 65000, risk: "low",
-                detail: "2024년 근저당 설정(국민은행 6.5억). 임차인 1명(전세 4억, 확정일자 有). 감정 시점 대비 현 시세 약 11.5억 수준." },
-            { id: "2026타경11052", court: "서울남부", region: "강서구", type: "villa", name: "화곡동 303-15 다세대 301호", area: "59.2㎡", appraisal: 32000, minBid: 20480, failCount: 2, bidDate: "2026.07.02", bidders: 3, status: "진행중", lat: 37.5405, lng: 126.8395, tenants: 3, mortgage: 28000, risk: "high",
-                detail: "다중 채권자. 선순위 근저당 2.8억(저축은행). 임차인 3명 중 2명 미배당 예상. 유치권 미신고. 깡통 위험 高." },
-            { id: "2026타경10891", court: "서울중앙", region: "서초구", type: "apt", name: "반포자이 204동 801호", area: "115.7㎡", appraisal: 285000, minBid: 228000, failCount: 1, bidDate: "2026.07.10", bidders: 15, status: "진행중", lat: 37.5045, lng: 127.0125, tenants: 0, mortgage: 120000, risk: "low",
-                detail: "단독 근저당(하나은행 12억). 임차인 없음. 현 시세 약 30억. 낙찰가율 85%+ 예상." },
-            { id: "2026타경12567", court: "인천", region: "부평구", type: "officetel", name: "부평역 에이스 오피스텔 502호", area: "33.1㎡", appraisal: 15000, minBid: 9600, failCount: 2, bidDate: "2026.06.28", bidders: 2, status: "진행중", lat: 37.4919, lng: 126.7236, tenants: 1, mortgage: 13500, risk: "medium",
-                detail: "근저당 1.35억(저축은행 고금리). 임차인 월세(보증금 1000/월 45). 관리비 연체 3개월." },
-            { id: "2026타경13890", court: "수원", region: "영통구", type: "apt", name: "영통 삼성래미안 305동 1203호", area: "101.3㎡", appraisal: 78000, minBid: 78000, failCount: 0, bidDate: "2026.07.15", bidders: 12, status: "신건", lat: 37.2556, lng: 127.0728, tenants: 1, mortgage: 45000, risk: "low",
-                detail: "1순위 근저당(KB국민 4.5억). 임차인 전세 3억(확정일자 有, 대항력 有). 신건 1회차." },
-            { id: "2026타경14201", court: "서울동부", region: "송파구", type: "apt", name: "잠실엘스 109동 2304호", area: "119.9㎡", appraisal: 245000, minBid: 196000, failCount: 1, bidDate: "2026.07.08", bidders: 20, status: "진행중", lat: 37.5133, lng: 127.0860, tenants: 0, mortgage: 100000, risk: "low",
-                detail: "단독 근저당(신한 10억). 임차인 없음. 현 시세 25억+. 투자 매력도 최상." },
-            { id: "2026타경15102", court: "서울북부", region: "노원구", type: "apt", name: "상계주공9단지 305동 802호", area: "72.4㎡", appraisal: 42000, minBid: 26880, failCount: 2, bidDate: "2026.07.12", bidders: 6, status: "진행중", lat: 37.6543, lng: 127.0615, tenants: 2, mortgage: 32000, risk: "medium",
-                detail: "근저당 3.2억(우리은행). 임차인 2명(전세 2억+1.5억). 1명 미배당 가능. 재건축 추진 지역." },
-            { id: "2026타경15890", court: "의정부", region: "남양주", type: "villa", name: "다산동 삼보빌라 201호", area: "46.8㎡", appraisal: 18000, minBid: 11520, failCount: 2, bidDate: "2026.06.30", bidders: 1, status: "진행중", lat: 37.6120, lng: 127.1530, tenants: 2, mortgage: 17000, risk: "high",
-                detail: "근저당 1.7억(저축은행 2건). 감정가 대비 94% 과다 설정. 임차인 2명 미배당 확실. 깡통전세." },
-            { id: "2026타경16234", court: "서울중앙", region: "강남구", type: "officetel", name: "역삼 아이파크 1208호", area: "58.3㎡", appraisal: 85000, minBid: 68000, failCount: 1, bidDate: "2026.07.18", bidders: 10, status: "진행중", lat: 37.5012, lng: 127.0365, tenants: 0, mortgage: 40000, risk: "low",
-                detail: "단독 근저당(KB 4억). 임차인 없음. 강남 역세권 오피스텔. 임대수익률 5%+ 기대." },
-            { id: "2026타경17001", court: "고양", region: "일산서구", type: "apt", name: "일산 후곡마을 현대 402동 1503호", area: "134.2㎡", appraisal: 62000, minBid: 39680, failCount: 3, bidDate: "2026.07.01", bidders: 4, status: "진행중", lat: 37.6755, lng: 126.7510, tenants: 1, mortgage: 35000, risk: "medium",
-                detail: "근저당 3.5억(농협). 3회 유찰로 최저가 51.2%. 임차인 전세 2억(확정일자 有). 대형 평수 할인 매수 기회." }
+        // 경매 물건 자동 생성 엔진 — 지역/유형/가격대 조합으로 100건+ 생성
+        const REGIONS = [
+            {region:"강남구",court:"서울중앙",lat:37.4975,lng:127.0280,aptPrice:[150000,350000],villaPrice:[25000,60000],offPrice:[40000,120000]},
+            {region:"서초구",court:"서울중앙",lat:37.4837,lng:127.0090,aptPrice:[140000,300000],villaPrice:[22000,50000],offPrice:[35000,90000]},
+            {region:"송파구",court:"서울동부",lat:37.5048,lng:127.1120,aptPrice:[120000,280000],villaPrice:[20000,45000],offPrice:[30000,80000]},
+            {region:"마포구",court:"서울서부",lat:37.5535,lng:126.9368,aptPrice:[80000,150000],villaPrice:[18000,40000],offPrice:[25000,60000]},
+            {region:"용산구",court:"서울중앙",lat:37.5326,lng:126.9910,aptPrice:[100000,200000],villaPrice:[20000,45000],offPrice:[30000,70000]},
+            {region:"강서구",court:"서울남부",lat:37.5510,lng:126.8495,aptPrice:[50000,100000],villaPrice:[12000,30000],offPrice:[15000,40000]},
+            {region:"양천구",court:"서울남부",lat:37.5271,lng:126.8566,aptPrice:[60000,120000],villaPrice:[15000,35000],offPrice:[18000,45000]},
+            {region:"노원구",court:"서울북부",lat:37.6543,lng:127.0565,aptPrice:[35000,70000],villaPrice:[10000,25000],offPrice:[12000,30000]},
+            {region:"성북구",court:"서울북부",lat:37.5894,lng:127.0167,aptPrice:[40000,80000],villaPrice:[12000,28000],offPrice:[15000,35000]},
+            {region:"동작구",court:"서울중앙",lat:37.5124,lng:126.9392,aptPrice:[60000,130000],villaPrice:[15000,35000],offPrice:[20000,50000]},
+            {region:"관악구",court:"서울중앙",lat:37.4782,lng:126.9516,aptPrice:[40000,80000],villaPrice:[10000,25000],offPrice:[12000,30000]},
+            {region:"영등포구",court:"서울남부",lat:37.5264,lng:126.8963,aptPrice:[50000,110000],villaPrice:[13000,30000],offPrice:[18000,45000]},
+            {region:"광진구",court:"서울동부",lat:37.5385,lng:127.0823,aptPrice:[55000,110000],villaPrice:[14000,32000],offPrice:[20000,50000]},
+            {region:"중랑구",court:"서울동부",lat:37.6066,lng:127.0928,aptPrice:[30000,60000],villaPrice:[8000,20000],offPrice:[10000,25000]},
+            {region:"은평구",court:"서울북부",lat:37.6177,lng:126.9227,aptPrice:[35000,70000],villaPrice:[10000,24000],offPrice:[12000,28000]},
+            {region:"부평구",court:"인천",lat:37.5075,lng:126.7217,aptPrice:[25000,55000],villaPrice:[8000,18000],offPrice:[10000,25000]},
+            {region:"남동구",court:"인천",lat:37.4488,lng:126.7310,aptPrice:[28000,60000],villaPrice:[9000,20000],offPrice:[12000,28000]},
+            {region:"분당구",court:"수원",lat:37.3823,lng:127.1188,aptPrice:[70000,150000],villaPrice:[18000,40000],offPrice:[25000,55000]},
+            {region:"영통구",court:"수원",lat:37.2556,lng:127.0728,aptPrice:[45000,90000],villaPrice:[12000,28000],offPrice:[15000,35000]},
+            {region:"일산서구",court:"고양",lat:37.6755,lng:126.7510,aptPrice:[35000,70000],villaPrice:[10000,22000],offPrice:[12000,28000]},
+            {region:"덕양구",court:"고양",lat:37.6372,lng:126.8321,aptPrice:[30000,60000],villaPrice:[8000,18000],offPrice:[10000,22000]},
+            {region:"원미구",court:"부천",lat:37.4932,lng:126.7845,aptPrice:[28000,55000],villaPrice:[8000,18000],offPrice:[10000,22000]},
+            {region:"다산동",court:"의정부",lat:37.6120,lng:127.1530,aptPrice:[30000,65000],villaPrice:[8000,20000],offPrice:[10000,25000]},
+            {region:"동탄",court:"수원",lat:37.2066,lng:127.0739,aptPrice:[40000,85000],villaPrice:[12000,28000],offPrice:[15000,35000]}
         ];
+        const APT_NAMES = ["래미안","자이","힐스테이트","더샵","푸르지오","아이파크","롯데캐슬","e편한세상","SK뷰","현대","삼성","대우","우성","한신","두산","한화","GS자이","반도유보라","중흥S클래스","호반써밋"];
+        const VILLA_NAMES = ["삼보빌라","대영빌라","신우빌라","동원빌라","세원빌라","한양빌라","미래빌라","우진빌라","성원빌라","백합빌라","장미빌라","진달래빌라"];
+        const OFF_NAMES = ["에이스","센트럴","스카이","골드","프라임","리치","스타","로얄","시티","그랜드","타워"];
+        const BANKS_SAFE = ["KB국민은행","신한은행","우리은행","하나은행","NH농협","IBK기업은행","카카오뱅크","토스뱅크"];
+        const BANKS_RISKY = ["○○저축은행","△△캐피탈","□□상호금융","××대부","사채"];
+
+        function seededRandom(seed) { let s=seed; return function(){ s=(s*16807)%2147483647; return(s-1)/2147483646; }; }
+
+        function generateAuctionDB() {
+            const items = [];
+            const rng = seededRandom(20260623);
+            const r = () => rng();
+            let caseNum = 10001;
+
+            REGIONS.forEach((reg, ri) => {
+                const itemCount = ri < 6 ? 5 : ri < 12 ? 4 : 3;
+                for (let i = 0; i < itemCount; i++) {
+                    const types = ["apt","apt","apt","villa","villa","officetel"];
+                    const type = types[Math.floor(r() * types.length)];
+
+                    let name, area, priceRange;
+                    if (type === "apt") {
+                        const aptName = APT_NAMES[Math.floor(r() * APT_NAMES.length)];
+                        const dong = Math.floor(r() * 20 + 100);
+                        const ho = Math.floor(r() * 25 + 1) * 100 + Math.floor(r() * 8 + 1);
+                        name = `${reg.region} ${aptName} ${dong}동 ${ho}호`;
+                        area = (Math.floor(r() * 6 + 5) * 10 + r() * 9).toFixed(1) + "㎡";
+                        priceRange = reg.aptPrice;
+                    } else if (type === "villa") {
+                        const villaName = VILLA_NAMES[Math.floor(r() * VILLA_NAMES.length)];
+                        const ho = Math.floor(r() * 5 + 1) * 100 + Math.floor(r() * 4 + 1);
+                        name = `${reg.region} ${villaName} ${ho}호`;
+                        area = (Math.floor(r() * 4 + 3) * 10 + r() * 9).toFixed(1) + "㎡";
+                        priceRange = reg.villaPrice;
+                    } else {
+                        const offName = OFF_NAMES[Math.floor(r() * OFF_NAMES.length)];
+                        const ho = Math.floor(r() * 15 + 1) * 100 + Math.floor(r() * 20 + 1);
+                        name = `${reg.region} ${offName} 오피스텔 ${ho}호`;
+                        area = (Math.floor(r() * 4 + 2) * 10 + r() * 9).toFixed(1) + "㎡";
+                        priceRange = reg.offPrice;
+                    }
+
+                    const appraisal = Math.floor(priceRange[0] + r() * (priceRange[1] - priceRange[0]));
+                    const failCount = Math.floor(r() * 4);
+                    const minBidRate = Math.pow(0.8, failCount);
+                    const minBid = Math.round(appraisal * minBidRate);
+                    const bidders = Math.floor(r() * (failCount > 1 ? 8 : 20)) + 1;
+
+                    const mortgageRatio = type === "villa" ? (0.5 + r() * 0.5) : (0.3 + r() * 0.4);
+                    const mortgage = Math.round(appraisal * mortgageRatio);
+                    const tenants = type === "villa" ? Math.floor(r() * 4) : Math.floor(r() * 2);
+
+                    let risk = "low";
+                    if (mortgage / appraisal > 0.8 || tenants >= 3) risk = "high";
+                    else if (mortgage / appraisal > 0.6 || failCount >= 3 || tenants >= 2) risk = "medium";
+
+                    const isRisky = risk === "high";
+                    const bank = isRisky ? BANKS_RISKY[Math.floor(r()*BANKS_RISKY.length)] : BANKS_SAFE[Math.floor(r()*BANKS_SAFE.length)];
+
+                    const dayOffset = Math.floor(r() * 30) + 1;
+                    const bidDate = `2026.07.${String(Math.min(dayOffset, 28)).padStart(2, '0')}`;
+
+                    let detail = `근저당 ${(mortgage/10000).toFixed(1)}억(${bank}). `;
+                    if (tenants === 0) detail += "임차인 없음. ";
+                    else if (tenants === 1) detail += `임차인 ${tenants}명(전세 ${(appraisal*0.3/10000).toFixed(1)}억, 확정일자 ${r()>0.3?'有':'無'}). `;
+                    else detail += `임차인 ${tenants}명 중 ${Math.ceil(tenants*0.6)}명 미배당 예상. `;
+                    if (isRisky) detail += "깡통 위험. ";
+                    if (failCount >= 3) detail += `${failCount}회 유찰로 최저가 ${(minBidRate*100).toFixed(0)}%. 할인 매수 기회. `;
+                    if (type === "apt" && risk === "low") detail += `현 시세 약 ${(appraisal*1.1/10000).toFixed(1)}억 수준.`;
+
+                    items.push({
+                        id: `2026타경${caseNum++}`,
+                        court: reg.court,
+                        region: reg.region,
+                        type, name, area, appraisal, minBid, failCount, bidDate, bidders,
+                        status: failCount === 0 ? "신건" : "진행중",
+                        lat: reg.lat + (r() - 0.5) * 0.02,
+                        lng: reg.lng + (r() - 0.5) * 0.02,
+                        tenants, mortgage, risk, detail
+                    });
+                }
+            });
+            return items;
+        }
+
+        const auctionDB = generateAuctionDB();
 
         let map, markerLayer, filteredList = [...auctionDB];
 
