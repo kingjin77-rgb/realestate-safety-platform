@@ -452,58 +452,71 @@
         // =========================================================================
         // DART 전자공시 API 연동
         // =========================================================================
-        async function searchDartCompany(query) {
-            const proxyBase = "https://corsproxy.io/?";
-            const url = `${proxyBase}${encodeURIComponent(`https://opendart.fss.or.kr/api/corpCode.xml?crtfc_key=${dartKey}`)}`;
-
-            // DART는 전체 기업 코드를 ZIP으로 제공 → 대신 회사명 검색 API 사용
-            // company.json API로 검색
-            const searchUrl = `${proxyBase}${encodeURIComponent(`https://opendart.fss.or.kr/api/company.json?crtfc_key=${dartKey}&corp_name=${encodeURIComponent(query)}`)}`;
-
-            try {
-                const res = await fetch(searchUrl);
-                if (!res.ok) throw new Error(`HTTP ${res.status}`);
-                const data = await res.json();
-
-                if (data.status === "000" && data.list) {
-                    return data.list.slice(0, 10).map((item, idx) => dartItemToCorp(item, idx));
-                }
-
-                // company.json이 안 되면 개별 조회 시도
-                // corp_code로 직접 조회
-                const altUrl = `${proxyBase}${encodeURIComponent(`https://opendart.fss.or.kr/api/list.json?crtfc_key=${dartKey}&corp_name=${encodeURIComponent(query)}&page_count=10`)}`;
-                const altRes = await fetch(altUrl);
-                if (altRes.ok) {
-                    const altData = await altRes.json();
-                    if (altData.status === "000" && altData.list) {
-                        return altData.list.slice(0, 10).map((item, idx) => dartDisclosureToCorp(item, idx));
-                    }
-                }
-
-                return [];
-            } catch (err) {
-                console.error("DART API 오류:", err);
-                return [];
+        async function dartFetch(url) {
+            const proxies = ["https://corsproxy.io/?", "https://api.allorigins.win/raw?url="];
+            for (const proxy of proxies) {
+                try {
+                    const res = await fetch(proxy + encodeURIComponent(url));
+                    if (res.ok) return await res.json();
+                } catch {}
             }
+            // 직접 호출 시도 (같은 도메인이면 동작)
+            try { const res = await fetch(url); if (res.ok) return await res.json(); } catch {}
+            return null;
         }
 
-        function dartItemToCorp(item, idx) {
-            const corp_code = item.corp_code || "";
-            const corp_name = item.corp_name || item.corp_cls || "미상";
-            const stock_code = item.stock_code || "";
-            const established = item.est_dt ? `${item.est_dt.slice(0,4)}.${item.est_dt.slice(4,6)}.${item.est_dt.slice(6,8)}` : "미상";
+        async function searchDartCompany(query) {
+            // 1단계: list.json (공시 검색)으로 corp_code 수집
+            const listUrl = `https://opendart.fss.or.kr/api/list.json?crtfc_key=${dartKey}&corp_name=${encodeURIComponent(query)}&page_count=20&bgn_de=20240101`;
+            const listData = await dartFetch(listUrl);
+
+            if (!listData || listData.status !== "000" || !listData.list) return [];
+
+            // corp_code 중복 제거
+            const seen = new Set();
+            const uniqueCorps = [];
+            for (const item of listData.list) {
+                if (!seen.has(item.corp_code)) {
+                    seen.add(item.corp_code);
+                    uniqueCorps.push(item);
+                }
+                if (uniqueCorps.length >= 10) break;
+            }
+
+            // 2단계: 각 corp_code로 company.json 상세 조회
+            const results = [];
+            for (const item of uniqueCorps.slice(0, 8)) {
+                try {
+                    const detailUrl = `https://opendart.fss.or.kr/api/company.json?crtfc_key=${dartKey}&corp_code=${item.corp_code}`;
+                    const detail = await dartFetch(detailUrl);
+                    if (detail && detail.status === "000") {
+                        results.push(dartDetailToCorp(detail, item));
+                    } else {
+                        results.push(dartDisclosureToCorp(item, results.length));
+                    }
+                } catch {
+                    results.push(dartDisclosureToCorp(item, results.length));
+                }
+            }
+
+            return results;
+        }
+
+        function dartDetailToCorp(detail, listItem) {
+            const est = detail.est_dt || "";
+            const established = est.length === 8 ? `${est.slice(0,4)}.${est.slice(4,6)}.${est.slice(6,8)}` : "미상";
 
             return {
-                id: `DART_${corp_code || idx}`,
-                dartCode: corp_code,
-                name: corp_name,
-                bizNo: item.bsns_no || stock_code || "조회필요",
-                ceo: item.ceo_nm || "조회필요",
-                established: established,
+                id: `DART_${detail.corp_code}`,
+                dartCode: detail.corp_code,
+                name: detail.corp_name || "미상",
+                bizNo: detail.bizr_no || detail.stock_code || "",
+                ceo: detail.ceo_nm || "",
+                established,
                 capital: 0,
-                industry: item.induty_code || "부동산 관련",
+                industry: detail.induty_code || "",
                 employees: 0,
-                address: item.adres || "DART 공시 참조",
+                address: detail.adres || "",
                 risk: "caution",
                 score: 50,
                 properties: 0,
@@ -512,9 +525,11 @@
                     revenue: [0,0,0], netIncome: [0,0,0],
                     debtRatio: 0, currentRatio: 0
                 },
-                registryChanges: [],
-                warnings: ["DART 실시간 검색 결과 — 상세 재무 데이터 로드 필요"],
-                isDartLive: true
+                registryChanges: listItem ? [{date: listItem.rcept_dt || "", type: "최근공시", detail: listItem.report_nm || ""}] : [],
+                warnings: ["법인 클릭 시 재무제표 자동 로드"],
+                isDartLive: true,
+                stockCode: detail.stock_code || "",
+                homepage: detail.hm_url || ""
             };
         }
 
@@ -547,14 +562,14 @@
         // DART 상세 재무제표 로드
         async function loadDartFinancials(corp) {
             if (!corp.dartCode || !dartKey) return null;
-            const proxyBase = "https://corsproxy.io/?";
 
             try {
-                // 단일회사 주요계정
-                const url = `${proxyBase}${encodeURIComponent(`https://opendart.fss.or.kr/api/fnlttSinglAcnt.json?crtfc_key=${dartKey}&corp_code=${corp.dartCode}&bsns_year=2024&reprt_code=11011`)}`;
-                const res = await fetch(url);
-                if (!res.ok) return null;
-                const data = await res.json();
+                // 2024 사업보고서 → 없으면 2023 시도
+                let data = await dartFetch(`https://opendart.fss.or.kr/api/fnlttSinglAcnt.json?crtfc_key=${dartKey}&corp_code=${corp.dartCode}&bsns_year=2024&reprt_code=11011`);
+                if (!data || data.status !== "000") {
+                    data = await dartFetch(`https://opendart.fss.or.kr/api/fnlttSinglAcnt.json?crtfc_key=${dartKey}&corp_code=${corp.dartCode}&bsns_year=2023&reprt_code=11011`);
+                }
+                if (!data) return null;
 
                 if (data.status === "000" && data.list) {
                     const items = data.list;
