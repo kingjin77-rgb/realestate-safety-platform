@@ -184,6 +184,7 @@
                 <div class="bg-purple-50 border border-purple-200 rounded-lg p-2.5 text-[10px] text-purple-800">
                     <i class="fa-solid fa-robot"></i> <b>AI 진단:</b> 내장 규칙 기반 분석 엔진 탑재 — 외부 API 키 없이 즉시 진단 가능
                 </div>
+                <div id="saveStatusDisplay" class="mt-3 bg-slate-50 border border-slate-200 rounded-lg p-2.5 text-[10px] text-slate-500 hidden"></div>
             </div>
             <div class="flex gap-2">
                 <button onclick="saveKeys()" class="flex-1 bg-orange-600 text-white font-bold py-2 rounded-xl text-xs hover:bg-orange-700 transition"><i class="fa-solid fa-save"></i> 저장</button>
@@ -329,15 +330,33 @@
         // 초기화
         // =========================================================================
         window.onload = function() {
-            ['corp_dart_key','corp_naver_id','corp_naver_secret','corp_gemini_key'].forEach(k => {
+            ['corp_dart_key','corp_naver_id','corp_naver_secret'].forEach(k => {
                 const v = localStorage.getItem(k);
                 if (v) {
                     if (k==='corp_dart_key') { dartKey=v; document.getElementById('dart_api_key').value=v; }
                     if (k==='corp_naver_id') { NAVER.clientId=v; document.getElementById('naver_client_id').value=v; }
                     if (k==='corp_naver_secret') { NAVER.clientSecret=v; document.getElementById('naver_client_secret').value=v; }
-                    if (k==='corp_gemini_key') { geminiKey=v; document.getElementById('gemini_api_key').value=v; }
                 }
             });
+
+            // 저장 상태 시각 복원
+            const dartOk = !!dartKey, naverOk = !!(NAVER.clientId && NAVER.clientSecret);
+            if (dartOk || naverOk) {
+                const statusEl = document.getElementById("saveStatusDisplay");
+                if (statusEl) {
+                    statusEl.classList.remove("hidden");
+                    let html = '<div class="space-y-1">';
+                    html += `<div class="flex items-center gap-2"><i class="fa-solid ${naverOk?'fa-circle-check text-green-600':'fa-circle-xmark text-slate-400'}"></i><span>네이버 API: ${naverOk?'<b class="text-green-700">저장됨 ✓</b>':'미입력'}</span></div>`;
+                    html += `<div class="flex items-center gap-2"><i class="fa-solid ${dartOk?'fa-circle-check text-green-600':'fa-circle-xmark text-slate-400'}"></i><span>DART API: ${dartOk?'<b class="text-green-700">저장됨 ✓</b>':'미입력'}</span></div>`;
+                    html += '</div>';
+                    statusEl.innerHTML = html;
+                    statusEl.className = "mt-3 bg-green-50 border border-green-300 rounded-lg p-2.5 text-[10px] text-green-800";
+                }
+                document.querySelectorAll('#settingsModal input').forEach(el => {
+                    if (el.value.trim()) { el.classList.remove('border-slate-200'); el.classList.add('border-green-500', 'bg-green-50'); }
+                });
+            }
+
             renderCorpList(corpDB);
             updateCounts();
         };
@@ -772,12 +791,38 @@
             dartKey = document.getElementById("dart_api_key").value.trim();
             NAVER.clientId = document.getElementById("naver_client_id").value.trim();
             NAVER.clientSecret = document.getElementById("naver_client_secret").value.trim();
-            geminiKey = document.getElementById("gemini_api_key").value.trim();
             if (dartKey) localStorage.setItem('corp_dart_key', dartKey);
             if (NAVER.clientId) localStorage.setItem('corp_naver_id', NAVER.clientId);
             if (NAVER.clientSecret) localStorage.setItem('corp_naver_secret', NAVER.clientSecret);
-            if (geminiKey) localStorage.setItem('corp_gemini_key', geminiKey);
-            showToast("API 키 저장 완료!"); closeModal('settingsModal');
+
+            // 저장 상태 시각 표시
+            const dartOk = !!dartKey, naverOk = !!(NAVER.clientId && NAVER.clientSecret);
+            const statusEl = document.getElementById("saveStatusDisplay");
+            if (statusEl) {
+                statusEl.classList.remove("hidden");
+                let html = '<div class="space-y-1">';
+                html += `<div class="flex items-center gap-2"><i class="fa-solid ${naverOk?'fa-circle-check text-green-600':'fa-circle-xmark text-slate-400'}"></i><span>네이버 API: ${naverOk?'<b class="text-green-700">저장됨 ✓</b>':'미입력'}</span></div>`;
+                html += `<div class="flex items-center gap-2"><i class="fa-solid ${dartOk?'fa-circle-check text-green-600':'fa-circle-xmark text-slate-400'}"></i><span>DART API: ${dartOk?'<b class="text-green-700">저장됨 ✓</b>':'미입력'}</span></div>`;
+                html += '</div>';
+                statusEl.innerHTML = html;
+                statusEl.className = (naverOk||dartOk) ? "mt-3 bg-green-50 border border-green-300 rounded-lg p-2.5 text-[10px] text-green-800" : "mt-3 bg-slate-50 border border-slate-200 rounded-lg p-2.5 text-[10px] text-slate-500";
+            }
+
+            // 입력 필드 시각 피드백
+            document.querySelectorAll('#settingsModal input').forEach(el => {
+                if (el.value.trim()) { el.classList.remove('border-slate-200'); el.classList.add('border-green-500', 'bg-green-50'); }
+            });
+
+            // 버튼 변경
+            const btn = document.querySelector('#settingsModal button[onclick="saveKeys()"]');
+            if (btn) {
+                const orig = btn.innerHTML;
+                btn.innerHTML = '<i class="fa-solid fa-circle-check"></i> 저장 완료!';
+                btn.classList.remove('bg-orange-600'); btn.classList.add('bg-emerald-700');
+                setTimeout(() => { btn.innerHTML = orig; btn.classList.remove('bg-emerald-700'); btn.classList.add('bg-orange-600'); }, 2000);
+            }
+
+            showToast("API 키가 저장되었습니다!", "fa-circle-check", "text-green-400");
             if (selectedCorp && NAVER.clientId) loadCorpNews(selectedCorp);
         }
 

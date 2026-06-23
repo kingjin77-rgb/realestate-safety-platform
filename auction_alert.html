@@ -299,6 +299,7 @@
                 <div class="bg-indigo-50 border border-indigo-200 rounded-lg p-2.5 text-[10px] text-indigo-800">
                     <i class="fa-solid fa-robot"></i> <b>AI 분석:</b> 내장 규칙 기반 엔진 탑재 — 외부 API 키 없이 즉시 분석 가능
                 </div>
+                <div id="saveStatusDisplay" class="mt-3 bg-slate-50 border border-slate-200 rounded-lg p-2.5 text-[10px] text-slate-500 hidden"></div>
             </div>
             <div class="flex gap-2">
                 <button onclick="saveAllKeys()" class="flex-1 bg-indigo-600 text-white font-bold py-2 rounded-xl text-xs hover:bg-indigo-700 transition"><i class="fa-solid fa-save"></i> 저장</button>
@@ -382,10 +383,21 @@
 
             const savedId = localStorage.getItem('auction_naver_id');
             const savedSecret = localStorage.getItem('auction_naver_secret');
-            const savedGemini = localStorage.getItem('auction_gemini_key');
             if (savedId) { NAVER.clientId = savedId; document.getElementById('naver_client_id').value = savedId; }
             if (savedSecret) { NAVER.clientSecret = savedSecret; document.getElementById('naver_client_secret').value = savedSecret; }
-            if (savedGemini) { geminiKey = savedGemini; document.getElementById('gemini_api_key').value = savedGemini; }
+
+            // 저장 상태 시각 복원
+            if (savedId && savedSecret) {
+                const statusEl = document.getElementById("saveStatusDisplay");
+                if (statusEl) {
+                    statusEl.classList.remove("hidden");
+                    statusEl.innerHTML = '<div class="flex items-center gap-2"><i class="fa-solid fa-circle-check text-green-600"></i><span>네이버 API: <b class="text-green-700">저장됨 ✓</b></span></div>';
+                    statusEl.className = "mt-3 bg-green-50 border border-green-300 rounded-lg p-2.5 text-[10px] text-green-800";
+                }
+                document.querySelectorAll('#settingsModal input').forEach(el => {
+                    if (el.value.trim()) { el.classList.remove('border-slate-200'); el.classList.add('border-green-500', 'bg-green-50'); }
+                });
+            }
 
             renderAuctionList(auctionDB);
             updateMapMarkers(auctionDB);
@@ -769,12 +781,34 @@
         function saveAllKeys() {
             NAVER.clientId = document.getElementById("naver_client_id").value.trim();
             NAVER.clientSecret = document.getElementById("naver_client_secret").value.trim();
-            geminiKey = document.getElementById("gemini_api_key").value.trim();
             if (NAVER.clientId) localStorage.setItem('auction_naver_id', NAVER.clientId);
             if (NAVER.clientSecret) localStorage.setItem('auction_naver_secret', NAVER.clientSecret);
-            if (geminiKey) localStorage.setItem('auction_gemini_key', geminiKey);
-            showToast("API 키 저장 완료!"); closeModal('settingsModal');
-            if (NAVER.clientId) { loadNaverAuctionNews(); loadDatalabTrend(); }
+
+            // 저장 상태 시각 표시
+            const naverOk = !!(NAVER.clientId && NAVER.clientSecret);
+            const statusEl = document.getElementById("saveStatusDisplay");
+            if (statusEl) {
+                statusEl.classList.remove("hidden");
+                statusEl.innerHTML = `<div class="flex items-center gap-2"><i class="fa-solid ${naverOk ? 'fa-circle-check text-green-600' : 'fa-circle-xmark text-slate-400'}"></i><span>네이버 API: ${naverOk ? '<b class="text-green-700">저장됨 ✓</b>' : '미입력'}</span></div>`;
+                statusEl.className = naverOk ? "mt-3 bg-green-50 border border-green-300 rounded-lg p-2.5 text-[10px] text-green-800" : "mt-3 bg-slate-50 border border-slate-200 rounded-lg p-2.5 text-[10px] text-slate-500";
+            }
+
+            // 입력 필드 시각 피드백
+            document.querySelectorAll('#settingsModal input').forEach(el => {
+                if (el.value.trim()) { el.classList.remove('border-slate-200'); el.classList.add('border-green-500', 'bg-green-50'); }
+            });
+
+            // 버튼 변경
+            const btn = document.querySelector('#settingsModal button[onclick="saveAllKeys()"]');
+            if (btn) {
+                const orig = btn.innerHTML;
+                btn.innerHTML = '<i class="fa-solid fa-circle-check"></i> 저장 완료!';
+                btn.classList.remove('bg-indigo-600'); btn.classList.add('bg-emerald-700');
+                setTimeout(() => { btn.innerHTML = orig; btn.classList.remove('bg-emerald-700'); btn.classList.add('bg-indigo-600'); }, 2000);
+            }
+
+            showToast("API 키가 저장되었습니다!", "fa-circle-check", "text-green-400");
+            if (naverOk) { loadNaverAuctionNews(); loadDatalabTrend(); }
         }
 
         function openModal(id) { document.getElementById(id).classList.remove("hidden"); }

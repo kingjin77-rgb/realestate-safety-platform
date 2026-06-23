@@ -422,6 +422,9 @@
                             class="w-full border border-slate-200 bg-white rounded-lg px-2.5 py-1.5 text-[11px] font-mono focus:outline-none focus:border-green-500">
                     </div>
                 </div>
+                <!-- 저장 상태 표시 -->
+                <div id="naverSaveStatus" class="mt-2 bg-slate-50 border border-slate-200 rounded-lg p-2.5 text-[10px] text-slate-500 hidden">
+                </div>
                 <div class="mt-2 bg-green-50 border border-green-200 rounded-lg p-2.5 text-[10px] text-green-800">
                     <i class="fa-solid fa-circle-info"></i>
                     <b>필요 API 권한:</b> 검색 (블로그/뉴스/카페글), 데이터랩 (검색어트렌드) — 2가지 체크 후 등록
@@ -429,11 +432,11 @@
             </div>
 
             <div class="border-t border-slate-100 pt-3 flex gap-2">
-                <button onclick="saveNaverKeys()" class="flex-1 bg-green-600 text-white font-bold py-2 rounded-xl text-xs hover:bg-green-700 transition">
-                    <i class="fa-solid fa-save"></i> 네이버 키 저장 및 연동 테스트
+                <button onclick="saveNaverKeys()" id="saveKeysBtn" class="flex-1 bg-green-600 text-white font-bold py-2 rounded-xl text-xs hover:bg-green-700 transition">
+                    <i class="fa-solid fa-save"></i> 전체 키 저장
                 </button>
                 <button onclick="closeModal('settingsModal')" class="flex-1 bg-slate-900 text-white font-bold py-2 rounded-xl text-xs hover:bg-slate-800 transition">
-                    확인 완료
+                    닫기
                 </button>
             </div>
         </div>
@@ -593,15 +596,24 @@
 
             const savedId = localStorage.getItem('naver_client_id');
             const savedSecret = localStorage.getItem('naver_client_secret');
+            let naverRestored = false, irosRestored = 0;
             if (savedId && savedSecret) {
                 NAVER_CONFIG.clientId = savedId;
                 NAVER_CONFIG.clientSecret = savedSecret;
                 document.getElementById('naver_client_id').value = savedId;
                 document.getElementById('naver_client_secret').value = savedSecret;
                 state.naverLiveMode = true;
+                naverRestored = true;
                 document.getElementById('naverStatusLabel').innerText = "실시간 API 연동";
                 document.getElementById('datalabStatusBadge').innerText = "API 연동됨";
                 document.getElementById('datalabStatusBadge').className = "text-[10px] bg-green-500 text-white px-1.5 py-0.5 rounded font-bold";
+            }
+            irosRestore.forEach(([lsKey]) => { if(localStorage.getItem(lsKey)) irosRestored++; });
+            if (naverRestored || irosRestored > 0) {
+                updateSaveStatus(irosRestored, naverRestored);
+                document.querySelectorAll('#settingsModal input').forEach(el => {
+                    if (el.value.trim()) { el.classList.remove('border-slate-200'); el.classList.add('border-green-500', 'bg-green-50'); }
+                });
             }
         };
 
@@ -1077,6 +1089,7 @@
         // =========================================================================
         function saveNaverKeys() {
             // IROS 키 저장
+            let irosSaved = 0;
             const irosFields = [
                 ['api_fixed_date', 'iros_fixed_date', 'FIXED_DATE'],
                 ['api_ownership_transfer', 'iros_ownership', 'OWNERSHIP_TRANSFER'],
@@ -1085,17 +1098,19 @@
             ];
             irosFields.forEach(([elId, lsKey, apiKey]) => {
                 const v = document.getElementById(elId).value.trim();
-                if (v) { localStorage.setItem(lsKey, v); API_KEYS[apiKey] = v; }
+                if (v) { localStorage.setItem(lsKey, v); API_KEYS[apiKey] = v; irosSaved++; }
             });
 
             // 네이버 키 저장
             const clientId = document.getElementById("naver_client_id").value.trim();
             const clientSecret = document.getElementById("naver_client_secret").value.trim();
+            let naverSaved = false;
 
             if (clientId && clientSecret) {
                 NAVER_CONFIG.clientId = clientId;
                 NAVER_CONFIG.clientSecret = clientSecret;
                 state.naverLiveMode = true;
+                naverSaved = true;
                 localStorage.setItem('naver_client_id', clientId);
                 localStorage.setItem('naver_client_secret', clientSecret);
                 document.getElementById("naverStatusLabel").innerText = "실시간 API 연동";
@@ -1103,10 +1118,45 @@
                 document.getElementById("datalabStatusBadge").className = "text-[10px] bg-green-500 text-white px-1.5 py-0.5 rounded font-bold";
             }
 
-            showToast("API 키가 저장되었습니다!", "fa-circle-check", "text-green-400");
-            closeModal('settingsModal');
+            // 저장 상태 시각 표시
+            updateSaveStatus(irosSaved, naverSaved);
+
+            // 입력 필드 초록 테두리로 저장 확인
+            document.querySelectorAll('#settingsModal input').forEach(el => {
+                if (el.value.trim()) {
+                    el.classList.remove('border-slate-200');
+                    el.classList.add('border-green-500', 'bg-green-50');
+                }
+            });
+
+            // 버튼 변경
+            const btn = document.getElementById("saveKeysBtn");
+            btn.innerHTML = '<i class="fa-solid fa-circle-check"></i> 저장 완료!';
+            btn.classList.remove('bg-green-600');
+            btn.classList.add('bg-emerald-700');
+            setTimeout(() => {
+                btn.innerHTML = '<i class="fa-solid fa-save"></i> 전체 키 저장';
+                btn.classList.remove('bg-emerald-700');
+                btn.classList.add('bg-green-600');
+            }, 2000);
+
+            showToast("모든 API 키가 저장되었습니다!", "fa-circle-check", "text-green-400");
 
             if (state.naverLiveMode) { loadLiveNaverFeeds(); loadDatalabTrend(); }
+        }
+
+        function updateSaveStatus(irosCnt, naverOk) {
+            const el = document.getElementById("naverSaveStatus");
+            let html = '<div class="space-y-1">';
+            html += `<div class="flex items-center gap-2"><i class="fa-solid ${naverOk ? 'fa-circle-check text-green-600' : 'fa-circle-xmark text-slate-400'}"></i><span>네이버 API: ${naverOk ? '<b class="text-green-700">저장됨 ✓</b>' : '미입력'}</span></div>`;
+            html += `<div class="flex items-center gap-2"><i class="fa-solid ${irosCnt > 0 ? 'fa-circle-check text-green-600' : 'fa-circle-xmark text-slate-400'}"></i><span>법원 등기 API: ${irosCnt > 0 ? '<b class="text-green-700">' + irosCnt + '종 저장됨 ✓</b>' : '미입력'}</span></div>`;
+            html += '</div>';
+            el.innerHTML = html;
+            el.classList.remove('hidden');
+            if (naverOk || irosCnt > 0) {
+                el.classList.remove('bg-slate-50', 'border-slate-200', 'text-slate-500');
+                el.classList.add('bg-green-50', 'border-green-300', 'text-green-800');
+            }
         }
 
         // =========================================================================
