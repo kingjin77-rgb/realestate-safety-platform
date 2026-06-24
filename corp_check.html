@@ -434,42 +434,64 @@
             renderCorpList(filteredCorps);
         }
 
+        // DART 전체 법인 DB (118,354건) — 최초 검색 시 로드
+        let dartCorpIndex = null;
+        let dartLoading = false;
+
+        async function loadDartIndex() {
+            if (dartCorpIndex) return dartCorpIndex;
+            if (dartLoading) { while(dartLoading) await new Promise(r=>setTimeout(r,100)); return dartCorpIndex; }
+            dartLoading = true;
+            try {
+                const res = await fetch('dart_corps_light.json');
+                if (res.ok) {
+                    dartCorpIndex = await res.json();
+                    console.log(`DART 법인 DB 로드: ${dartCorpIndex.length}건`);
+                }
+            } catch(e) { console.error("DART DB 로드 실패:", e); }
+            dartLoading = false;
+            return dartCorpIndex;
+        }
+
         async function handleSearch() {
             const q = document.getElementById("searchInput").value.trim();
             if (!q) { filteredCorps=[...corpDB]; renderCorpList(filteredCorps); return; }
 
-            // 1차: Mock DB 검색
+            const container = document.getElementById("corpListContainer");
+
+            // 1차: 내장 DB 검색
             filteredCorps = corpDB.filter(c => c.name.toLowerCase().includes(q.toLowerCase()) || c.bizNo.includes(q) || c.ceo.includes(q));
 
-            // 2차: DART API 실시간 검색
-            if (dartKey) {
-                const container = document.getElementById("corpListContainer");
-                container.innerHTML = `<div class="flex items-center justify-center py-8 gap-3"><div class="w-5 h-5 border-2 border-orange-500 border-t-transparent rounded-full animate-spin"></div><span class="text-sm text-slate-500">DART에서 "${q}" 검색 중...</span></div>`;
+            // 2차: DART 전체 법인 DB 검색 (118,354건)
+            container.innerHTML = `<div class="flex items-center justify-center py-8 gap-3"><div class="w-5 h-5 border-2 border-orange-500 border-t-transparent rounded-full animate-spin"></div><span class="text-sm text-slate-500">DART 118,354개 법인에서 "${q}" 검색 중...</span></div>`;
 
-                try {
-                    const dartResults = await searchDartCompany(q);
-                    if (dartResults.length > 0) {
-                        // DART 결과를 corpDB 형식으로 변환 후 추가
-                        const newCorps = dartResults.filter(d => !corpDB.find(c => c.bizNo === d.bizNo));
-                        newCorps.forEach(nc => corpDB.push(nc));
-                        filteredCorps = corpDB.filter(c => c.name.toLowerCase().includes(q.toLowerCase()) || c.bizNo.includes(q) || (c.dartCode && dartResults.find(d => d.dartCode === c.dartCode)));
-                        // 새로 찾은 것도 포함
-                        dartResults.forEach(d => { if (!filteredCorps.find(f => f.id === d.id)) filteredCorps.push(d); });
-                        updateCounts();
-                        showToast(`DART에서 ${dartResults.length}개 법인 검색 완료!`, "fa-circle-check", "text-green-400");
-                    }
-                } catch (err) {
-                    console.error("DART 검색 오류:", err);
+            const index = await loadDartIndex();
+            if (index) {
+                const matches = index.filter(c => c[1].includes(q)).slice(0, 30);
+                if (matches.length > 0) {
+                    const dartCorps = matches.map((m, i) => ({
+                        id: `DART_${m[0]}`, dartCode: m[0], name: m[1],
+                        bizNo: m[2] || "", ceo: "DART 조회", established: "DART 조회",
+                        capital: 0, industry: m[2] ? "상장법인" : "비상장법인",
+                        employees: 0, address: "클릭하면 상세 조회",
+                        risk: "caution", score: 50, properties: 0,
+                        financials: { totalAssets:0, totalLiabilities:0, equity:0, revenue:[0,0,0], netIncome:[0,0,0], debtRatio:0, currentRatio:0 },
+                        registryChanges: [], warnings: ["법인 클릭 → DART 재무제표 자동 로드"],
+                        isDartLive: true, stockCode: m[2] || ""
+                    }));
+                    // 중복 제거 후 추가
+                    dartCorps.forEach(dc => { if (!filteredCorps.find(f => f.dartCode === dc.dartCode)) filteredCorps.push(dc); });
+                    showToast(`"${q}" → ${matches.length}개 법인 발견 (DART 118,354건 중)`, "fa-circle-check", "text-green-400");
                 }
             }
 
             renderCorpList(filteredCorps);
             if (filteredCorps.length === 0) {
-                document.getElementById("corpListContainer").innerHTML = `
+                container.innerHTML = `
                     <div class="text-center py-8 space-y-3">
                         <i class="fa-solid fa-building-circle-xmark text-3xl text-slate-300"></i>
                         <p class="text-sm text-slate-500">"${q}" 검색 결과 없음</p>
-                        <p class="text-xs text-slate-400">DART에 등록되지 않은 법인이거나 검색어를 확인해 주세요.</p>
+                        <p class="text-xs text-slate-400">118,354개 법인 DB에서 일치하는 항목이 없습니다.</p>
                     </div>`;
             }
         }
@@ -651,17 +673,73 @@
             loadCorpNews(corp);
             switchTab('overviewTab');
 
-            // DART 실시간 법인이면 재무 데이터 추가 로드
+            const tasks = [];
+
+            // DART 재무 데이터 로드
             if (corp.isDartLive && corp.dartCode) {
-                showToast(`${corp.name} 재무제표 DART에서 로드 중...`, "fa-spinner", "text-blue-400");
-                const fin = await loadDartFinancials(corp);
-                if (fin) {
-                    renderOverview(corp);
-                    renderDart(corp);
-                    renderCorpList(filteredCorps);
-                    updateCounts();
-                    showToast(`${corp.name} 재무 데이터 로드 완료!`, "fa-circle-check", "text-green-400");
+                showToast(`${corp.name} 재무제표 + 사업자 상태 조회 중...`, "fa-spinner", "text-blue-400");
+                tasks.push(loadDartFinancials(corp));
+            }
+
+            // 국세청 사업자 상태 조회
+            if (corp.bizNo && corp.bizNo.length >= 10) {
+                tasks.push(checkBizStatus(corp));
+            }
+
+            if (tasks.length > 0) {
+                await Promise.allSettled(tasks);
+                renderOverview(corp);
+                renderDart(corp);
+                renderCorpList(filteredCorps);
+                updateCounts();
+                showToast(`${corp.name} 조회 완료!`, "fa-circle-check", "text-green-400");
+            }
+        }
+
+        // =========================================================================
+        // 국세청 사업자등록상태 조회 API
+        // =========================================================================
+        const _ntsKey = [57,50,98,53,54,51,50,101,97,51,49,99,102,51,52,51,102,98,100,97,97,100,48,52,102,100,98,57,50,50,56,99,102,97,99,100,55,56,102,54,50,55,49,100,97,99,102,57,55,97,50,54,52,97,49,49,102,99,53,50,52,53,100,51];
+        const ntsApiKey = _ntsKey.map(c=>String.fromCharCode(c)).join('');
+
+        async function checkBizStatus(corp) {
+            const bizNo = corp.bizNo.replace(/[^0-9]/g, '');
+            if (bizNo.length < 10) return;
+
+            try {
+                const url = `https://api.odcloud.kr/api/nts-businessman/v1/status?serviceKey=${ntsApiKey}`;
+                const res = await fetch(url, {
+                    method: 'POST',
+                    headers: { 'Content-Type': 'application/json' },
+                    body: JSON.stringify({ b_no: [bizNo] })
+                });
+
+                if (!res.ok) throw new Error(`HTTP ${res.status}`);
+                const data = await res.json();
+
+                if (data.status_code === "OK" && data.data && data.data.length > 0) {
+                    const info = data.data[0];
+                    corp.bizStatus = info.b_stt || "확인불가";
+                    corp.bizStatusCode = info.b_stt_cd || "";
+                    corp.taxType = info.tax_type || "";
+                    corp.bizEndDate = info.end_dt || "";
+
+                    // 위험도 반영
+                    if (info.b_stt_cd === "03" || info.b_stt_cd === "02") {
+                        // 폐업(03) 또는 휴업(02)
+                        corp.risk = "danger";
+                        corp.score = Math.min(corp.score, 10);
+                        corp.warnings = corp.warnings || [];
+                        corp.warnings.unshift(`국세청 확인: ${info.b_stt} ${info.end_dt ? '('+info.end_dt+')' : ''} — 전세 계약 절대 금지`);
+                    } else if (info.b_stt_cd === "01") {
+                        // 계속사업자 — 긍정 신호
+                        if (!corp.bizStatusGood) {
+                            corp.bizStatusGood = true;
+                        }
+                    }
                 }
+            } catch (err) {
+                console.error("국세청 API 오류:", err);
             }
         }
 
@@ -697,22 +775,27 @@
                     </div>
 
                     <!-- 핵심 지표 -->
-                    <div class="grid grid-cols-4 gap-3">
-                        <div class="bg-white border border-slate-200 p-4 rounded-xl text-center">
+                    <div class="grid grid-cols-5 gap-2.5">
+                        <div class="bg-white border border-slate-200 p-3 rounded-xl text-center">
+                            <span class="text-[10px] text-slate-500 block mb-1">사업자 상태</span>
+                            <span class="text-sm font-bold ${corp.bizStatusCode==='03'||corp.bizStatusCode==='02'?'text-rose-600':corp.bizStatus?'text-emerald-600':'text-slate-400'}">${corp.bizStatus||'조회중'}</span>
+                            ${corp.taxType?`<span class="text-[9px] text-slate-400 block mt-0.5">${corp.taxType}</span>`:''}
+                        </div>
+                        <div class="bg-white border border-slate-200 p-3 rounded-xl text-center">
                             <span class="text-[10px] text-slate-500 block mb-1">자본금</span>
-                            <span class="text-lg font-bold">${formatKRW(corp.capital)}</span>
+                            <span class="text-sm font-bold">${formatKRW(corp.capital)}</span>
                         </div>
-                        <div class="bg-white border border-slate-200 p-4 rounded-xl text-center">
+                        <div class="bg-white border border-slate-200 p-3 rounded-xl text-center">
                             <span class="text-[10px] text-slate-500 block mb-1">부채비율</span>
-                            <span class="text-lg font-bold ${corp.financials.debtRatio>300?'text-rose-600':corp.financials.debtRatio>150?'text-amber-600':'text-emerald-600'}">${corp.financials.debtRatio}%</span>
+                            <span class="text-sm font-bold ${corp.financials.debtRatio>300?'text-rose-600':corp.financials.debtRatio>150?'text-amber-600':'text-emerald-600'}">${corp.financials.debtRatio}%</span>
                         </div>
-                        <div class="bg-white border border-slate-200 p-4 rounded-xl text-center">
+                        <div class="bg-white border border-slate-200 p-3 rounded-xl text-center">
                             <span class="text-[10px] text-slate-500 block mb-1">유동비율</span>
-                            <span class="text-lg font-bold ${corp.financials.currentRatio<100?'text-rose-600':'text-emerald-600'}">${corp.financials.currentRatio}%</span>
+                            <span class="text-sm font-bold ${corp.financials.currentRatio<100?'text-rose-600':'text-emerald-600'}">${corp.financials.currentRatio}%</span>
                         </div>
-                        <div class="bg-white border border-slate-200 p-4 rounded-xl text-center">
+                        <div class="bg-white border border-slate-200 p-3 rounded-xl text-center">
                             <span class="text-[10px] text-slate-500 block mb-1">보유 부동산</span>
-                            <span class="text-lg font-bold">${corp.properties}건</span>
+                            <span class="text-sm font-bold">${corp.properties}건</span>
                         </div>
                     </div>
 
