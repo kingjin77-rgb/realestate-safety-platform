@@ -42,45 +42,50 @@
 
     <div class="flex-1 flex overflow-hidden">
 
-        <!-- 왼쪽: 검색 + 법인 리스트 -->
-        <aside class="w-full md:w-[440px] border-r border-slate-200 bg-white flex flex-col shrink-0 z-10 overflow-y-auto">
+        <!-- 왼쪽: 업종별 카테고리 + 검색 -->
+        <aside class="w-full md:w-[460px] border-r border-slate-200 bg-white flex flex-col shrink-0 z-10 overflow-y-auto">
 
-            <!-- 법인 검색 -->
+            <!-- 검색 -->
             <div class="p-4 border-b border-slate-100 sticky top-0 bg-white z-20">
                 <div class="relative">
                     <i class="fa-solid fa-magnifying-glass absolute left-3.5 top-1/2 -translate-y-1/2 text-slate-400"></i>
-                    <input type="text" id="searchInput" placeholder="아무 법인명 검색 가능 (예: 삼성, 현대건설, 제이엘)"
+                    <input type="text" id="searchInput" placeholder="법인명 검색 (예: 삼성, 현대건설, DB손해보험)"
                         class="w-full pl-10 pr-24 py-2.5 bg-slate-50 hover:bg-slate-100 focus:bg-white border border-slate-200 focus:border-orange-500 rounded-xl text-sm focus:outline-none transition"
                         onkeypress="if(event.key==='Enter')handleSearch()">
                     <button onclick="handleSearch()" class="absolute right-2 top-1/2 -translate-y-1/2 px-3 py-1 bg-slate-900 text-white text-xs font-medium rounded-lg hover:bg-slate-800 transition">검색</button>
                 </div>
-                <div class="flex gap-2 mt-2">
-                    <button onclick="filterRisk('all')" class="text-[10px] bg-slate-100 text-slate-700 px-2.5 py-1 rounded-lg font-bold hover:bg-slate-200 transition">전체</button>
-                    <button onclick="filterRisk('danger')" class="text-[10px] bg-rose-50 text-rose-700 px-2.5 py-1 rounded-lg font-bold hover:bg-rose-100 transition">위험 법인</button>
-                    <button onclick="filterRisk('caution')" class="text-[10px] bg-amber-50 text-amber-700 px-2.5 py-1 rounded-lg font-bold hover:bg-amber-100 transition">주의 법인</button>
-                    <button onclick="filterRisk('safe')" class="text-[10px] bg-emerald-50 text-emerald-700 px-2.5 py-1 rounded-lg font-bold hover:bg-emerald-100 transition">안전 법인</button>
+                <!-- 업종별 카테고리 버튼 -->
+                <div class="flex flex-wrap gap-1.5 mt-2.5" id="categoryButtons">
+                    <button onclick="searchCategory('보험')" class="text-[10px] bg-blue-50 text-blue-700 px-2.5 py-1.5 rounded-lg font-bold hover:bg-blue-100 transition"><i class="fa-solid fa-shield-halved"></i> 보험</button>
+                    <button onclick="searchCategory('건설')" class="text-[10px] bg-orange-50 text-orange-700 px-2.5 py-1.5 rounded-lg font-bold hover:bg-orange-100 transition"><i class="fa-solid fa-helmet-safety"></i> 건설</button>
+                    <button onclick="searchCategory('부동산')" class="text-[10px] bg-emerald-50 text-emerald-700 px-2.5 py-1.5 rounded-lg font-bold hover:bg-emerald-100 transition"><i class="fa-solid fa-building"></i> 부동산</button>
+                    <button onclick="searchCategory('은행')" class="text-[10px] bg-indigo-50 text-indigo-700 px-2.5 py-1.5 rounded-lg font-bold hover:bg-indigo-100 transition"><i class="fa-solid fa-landmark"></i> 은행</button>
+                    <button onclick="searchCategory('증권')" class="text-[10px] bg-purple-50 text-purple-700 px-2.5 py-1.5 rounded-lg font-bold hover:bg-purple-100 transition"><i class="fa-solid fa-chart-line"></i> 증권</button>
+                    <button onclick="searchCategory('캐피탈')" class="text-[10px] bg-rose-50 text-rose-700 px-2.5 py-1.5 rounded-lg font-bold hover:bg-rose-100 transition"><i class="fa-solid fa-coins"></i> 캐피탈</button>
+                    <button onclick="searchCategory('제약')" class="text-[10px] bg-cyan-50 text-cyan-700 px-2.5 py-1.5 rounded-lg font-bold hover:bg-cyan-100 transition"><i class="fa-solid fa-pills"></i> 제약</button>
+                    <button onclick="searchCategory('자동차')" class="text-[10px] bg-slate-100 text-slate-700 px-2.5 py-1.5 rounded-lg font-bold hover:bg-slate-200 transition"><i class="fa-solid fa-car"></i> 자동차</button>
+                    <button onclick="searchCategory('식품')" class="text-[10px] bg-amber-50 text-amber-700 px-2.5 py-1.5 rounded-lg font-bold hover:bg-amber-100 transition"><i class="fa-solid fa-utensils"></i> 식품</button>
+                    <button onclick="searchCategory('IT')" class="text-[10px] bg-violet-50 text-violet-700 px-2.5 py-1.5 rounded-lg font-bold hover:bg-violet-100 transition"><i class="fa-solid fa-microchip"></i> IT/전자</button>
                 </div>
             </div>
 
-            <div class="p-5 space-y-5">
-                <!-- 요약 통계 -->
-                <div class="grid grid-cols-3 gap-2">
-                    <div class="bg-rose-50 border border-rose-100 p-3 rounded-xl text-center">
-                        <span class="text-[10px] text-rose-600 block">위험 법인</span>
-                        <span class="text-xl font-black text-rose-700" id="countDanger">2</span>
-                    </div>
-                    <div class="bg-amber-50 border border-amber-100 p-3 rounded-xl text-center">
-                        <span class="text-[10px] text-amber-600 block">주의 법인</span>
-                        <span class="text-xl font-black text-amber-700" id="countCaution">2</span>
-                    </div>
-                    <div class="bg-emerald-50 border border-emerald-100 p-3 rounded-xl text-center">
-                        <span class="text-[10px] text-emerald-600 block">안전 법인</span>
-                        <span class="text-xl font-black text-emerald-700" id="countSafe">2</span>
-                    </div>
+            <div class="p-4 space-y-4">
+                <!-- 검색 결과 헤더 -->
+                <div class="flex items-center justify-between">
+                    <h3 class="text-sm font-bold text-slate-800" id="listHeader">
+                        <i class="fa-solid fa-building text-orange-600"></i> 업종 카테고리를 선택하세요
+                    </h3>
+                    <span class="text-[10px] text-slate-400" id="listCount">DART 118,354건</span>
                 </div>
 
                 <!-- 법인 리스트 -->
-                <div class="space-y-2.5" id="corpListContainer"></div>
+                <div class="space-y-2" id="corpListContainer">
+                    <div class="text-center py-8 text-slate-400 text-xs space-y-3">
+                        <i class="fa-solid fa-layer-group text-3xl text-slate-300"></i>
+                        <p>위 업종 버튼을 클릭하거나<br>검색창에 법인명을 입력하세요</p>
+                        <p class="text-[10px] text-slate-300">DART 등록 118,354개 법인 전수 검색 가능</p>
+                    </div>
+                </div>
             </div>
         </aside>
 
@@ -382,8 +387,8 @@
                 });
             }
 
-            renderCorpList(corpDB);
-            updateCounts();
+            // 초기 화면: 카테고리 안내 (검색 전)
+            loadDartIndex();
         };
 
         // =========================================================================
@@ -392,46 +397,54 @@
         function renderCorpList(corps) {
             const container = document.getElementById("corpListContainer");
             container.innerHTML = "";
+            if (corps.length === 0) return;
+
             corps.forEach(corp => {
                 const riskConfig = {
                     danger: { badge:"위험", badgeClass:"bg-rose-100 text-rose-700", border:"border-l-rose-500", scoreColor:"text-rose-600" },
-                    caution: { badge:"주의", badgeClass:"bg-amber-100 text-amber-700", border:"border-l-amber-500", scoreColor:"text-amber-600" },
+                    caution: { badge:"조회", badgeClass:"bg-amber-100 text-amber-700", border:"border-l-amber-400", scoreColor:"text-amber-600" },
                     safe: { badge:"안전", badgeClass:"bg-emerald-100 text-emerald-700", border:"border-l-emerald-500", scoreColor:"text-emerald-600" }
-                }[corp.risk];
+                }[corp.risk] || { badge:"조회", badgeClass:"bg-slate-100 text-slate-600", border:"border-l-slate-300", scoreColor:"text-slate-600" };
+
+                const isListed = corp.stockCode && corp.stockCode.length > 0;
+                const listBadge = isListed ? '<span class="bg-indigo-100 text-indigo-700 text-[9px] font-bold px-1.5 py-0.5 rounded-full">상장</span>' : '<span class="bg-slate-100 text-slate-500 text-[9px] font-bold px-1.5 py-0.5 rounded-full">비상장</span>';
+                const dartBadge = corp.isDartLive ? '<span class="bg-blue-100 text-blue-700 text-[9px] font-bold px-1.5 py-0.5 rounded-full">DART</span>' : '';
 
                 const card = document.createElement("div");
-                card.className = `bg-white border border-slate-200/80 p-4 rounded-xl shadow-sm border-l-4 ${riskConfig.border} hover:shadow-md transition cursor-pointer ${selectedCorp?.id===corp.id?'ring-2 ring-orange-400':''}`;
+                card.className = `bg-white border border-slate-200/80 p-3 rounded-xl shadow-sm border-l-4 ${riskConfig.border} hover:shadow-md transition cursor-pointer ${selectedCorp?.id===corp.id?'ring-2 ring-orange-400':''}`;
                 card.onclick = () => selectCorp(corp);
+
+                const hasFinancials = corp.financials && corp.financials.totalAssets > 0;
+                const detailLine = hasFinancials
+                    ? `<div class="flex gap-2.5 text-[10px] mt-1.5"><span class="text-slate-600">자본 <b>${formatKRW(corp.capital)}</b></span><span class="text-slate-600">부채율 <b class="${corp.financials.debtRatio>300?'text-rose-600':corp.financials.debtRatio>150?'text-amber-600':'text-emerald-600'}">${corp.financials.debtRatio}%</b></span></div>`
+                    : `<p class="text-[10px] text-blue-500 mt-1"><i class="fa-solid fa-hand-pointer"></i> 클릭하면 DART 재무제표 + 국세청 상태 자동 조회</p>`;
+
                 card.innerHTML = `
-                    <div class="flex items-center justify-between mb-2">
-                        <div class="flex items-center gap-1.5">
-                            <span class="${riskConfig.badgeClass} text-[10px] font-bold px-1.5 py-0.5 rounded-full">${riskConfig.badge}</span>${corp.isDartLive ? '<span class="bg-blue-100 text-blue-700 text-[10px] font-bold px-1.5 py-0.5 rounded-full">DART</span>' : ''}
-                            <span class="text-[10px] text-slate-400">${corp.bizNo}</span>
-                        </div>
-                        <span class="text-lg font-black ${riskConfig.scoreColor}">${corp.score}점</span>
+                    <div class="flex items-center justify-between mb-1">
+                        <div class="flex items-center gap-1">${listBadge}${dartBadge}</div>
+                        ${hasFinancials ? `<span class="text-sm font-black ${riskConfig.scoreColor}">${corp.score}점</span>` : ''}
                     </div>
-                    <h4 class="text-sm font-bold text-slate-800 mb-1">${corp.name}</h4>
-                    <p class="text-[10px] text-slate-500 mb-2">${corp.industry} | 대표: ${corp.ceo} | 설립: ${corp.established}</p>
-                    <div class="flex gap-3 text-[10px]">
-                        <span class="text-slate-600">자본금 <b>${formatKRW(corp.capital)}</b></span>
-                        <span class="text-slate-600">부동산 <b>${corp.properties}건</b></span>
-                        <span class="text-slate-600">부채비율 <b class="${corp.financials.debtRatio>300?'text-rose-600':corp.financials.debtRatio>150?'text-amber-600':'text-emerald-600'}">${corp.financials.debtRatio}%</b></span>
-                    </div>
-                    ${corp.warnings.length ? `<div class="mt-2 bg-rose-50 rounded-lg p-2"><p class="text-[10px] text-rose-700 font-medium"><i class="fa-solid fa-triangle-exclamation"></i> ${corp.warnings[0]}</p></div>` : ''}
+                    <h4 class="text-[13px] font-bold text-slate-800">${corp.name}</h4>
+                    <p class="text-[10px] text-slate-400">${corp.industry || ''}${corp.ceo && corp.ceo !== 'DART 조회' ? ' | '+corp.ceo : ''}${isListed ? ' | 종목:'+corp.stockCode : ''}</p>
+                    ${detailLine}
                 `;
                 container.appendChild(card);
             });
         }
 
-        function updateCounts() {
-            document.getElementById("countDanger").innerText = corpDB.filter(c=>c.risk==='danger').length;
-            document.getElementById("countCaution").innerText = corpDB.filter(c=>c.risk==='caution').length;
-            document.getElementById("countSafe").innerText = corpDB.filter(c=>c.risk==='safe').length;
+        function updateCounts() { return; // 카테고리 모드에서는 미사용
         }
 
         function filterRisk(level) {
             filteredCorps = level==='all' ? [...corpDB] : corpDB.filter(c=>c.risk===level);
             renderCorpList(filteredCorps);
+        }
+
+        // 업종 카테고리 검색
+        async function searchCategory(keyword) {
+            document.getElementById("searchInput").value = keyword;
+            document.getElementById("listHeader").innerHTML = `<i class="fa-solid fa-tag text-orange-600"></i> "${keyword}" 업종 검색 결과`;
+            await handleSearch();
         }
 
         // DART 전체 법인 DB (118,354건) — 최초 검색 시 로드
@@ -485,13 +498,23 @@
                 }
             }
 
+            // 상장/비상장 구분 정렬 (상장 우선)
+            filteredCorps.sort((a,b) => {
+                if (a.stockCode && !b.stockCode) return -1;
+                if (!a.stockCode && b.stockCode) return 1;
+                return 0;
+            });
+
+            document.getElementById("listHeader").innerHTML = `<i class="fa-solid fa-tag text-orange-600"></i> "${q}" 검색 결과`;
+            document.getElementById("listCount").innerText = `${filteredCorps.length}건`;
             renderCorpList(filteredCorps);
+
             if (filteredCorps.length === 0) {
                 container.innerHTML = `
                     <div class="text-center py-8 space-y-3">
                         <i class="fa-solid fa-building-circle-xmark text-3xl text-slate-300"></i>
                         <p class="text-sm text-slate-500">"${q}" 검색 결과 없음</p>
-                        <p class="text-xs text-slate-400">118,354개 법인 DB에서 일치하는 항목이 없습니다.</p>
+                        <p class="text-xs text-slate-400">118,354개 법인에서 일치 항목 없음. 다른 키워드로 시도하세요.</p>
                     </div>`;
             }
         }
