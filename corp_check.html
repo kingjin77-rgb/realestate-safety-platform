@@ -54,18 +54,34 @@
                         onkeypress="if(event.key==='Enter')handleSearch()">
                     <button onclick="handleSearch()" class="absolute right-2 top-1/2 -translate-y-1/2 px-3 py-1 bg-slate-900 text-white text-xs font-medium rounded-lg hover:bg-slate-800 transition">검색</button>
                 </div>
-                <!-- 업종별 카테고리 버튼 -->
-                <div class="flex flex-wrap gap-1.5 mt-2.5" id="categoryButtons">
-                    <button onclick="searchCategory('보험')" class="text-[10px] bg-blue-50 text-blue-700 px-2.5 py-1.5 rounded-lg font-bold hover:bg-blue-100 transition"><i class="fa-solid fa-shield-halved"></i> 보험</button>
-                    <button onclick="searchCategory('건설')" class="text-[10px] bg-orange-50 text-orange-700 px-2.5 py-1.5 rounded-lg font-bold hover:bg-orange-100 transition"><i class="fa-solid fa-helmet-safety"></i> 건설</button>
-                    <button onclick="searchCategory('부동산')" class="text-[10px] bg-emerald-50 text-emerald-700 px-2.5 py-1.5 rounded-lg font-bold hover:bg-emerald-100 transition"><i class="fa-solid fa-building"></i> 부동산</button>
-                    <button onclick="searchCategory('은행')" class="text-[10px] bg-indigo-50 text-indigo-700 px-2.5 py-1.5 rounded-lg font-bold hover:bg-indigo-100 transition"><i class="fa-solid fa-landmark"></i> 은행</button>
-                    <button onclick="searchCategory('증권')" class="text-[10px] bg-purple-50 text-purple-700 px-2.5 py-1.5 rounded-lg font-bold hover:bg-purple-100 transition"><i class="fa-solid fa-chart-line"></i> 증권</button>
-                    <button onclick="searchCategory('캐피탈')" class="text-[10px] bg-rose-50 text-rose-700 px-2.5 py-1.5 rounded-lg font-bold hover:bg-rose-100 transition"><i class="fa-solid fa-coins"></i> 캐피탈</button>
-                    <button onclick="searchCategory('제약')" class="text-[10px] bg-cyan-50 text-cyan-700 px-2.5 py-1.5 rounded-lg font-bold hover:bg-cyan-100 transition"><i class="fa-solid fa-pills"></i> 제약</button>
-                    <button onclick="searchCategory('자동차')" class="text-[10px] bg-slate-100 text-slate-700 px-2.5 py-1.5 rounded-lg font-bold hover:bg-slate-200 transition"><i class="fa-solid fa-car"></i> 자동차</button>
-                    <button onclick="searchCategory('식품')" class="text-[10px] bg-amber-50 text-amber-700 px-2.5 py-1.5 rounded-lg font-bold hover:bg-amber-100 transition"><i class="fa-solid fa-utensils"></i> 식품</button>
-                    <button onclick="searchCategory('IT')" class="text-[10px] bg-violet-50 text-violet-700 px-2.5 py-1.5 rounded-lg font-bold hover:bg-violet-100 transition"><i class="fa-solid fa-microchip"></i> IT/전자</button>
+                <!-- 업종별 카테고리 (전 산업) -->
+                <div class="flex flex-wrap gap-1 mt-2.5" id="categoryButtons">
+                    <button onclick="searchCategory('건설')" class="text-[10px] bg-orange-50 text-orange-700 px-2 py-1 rounded font-bold hover:bg-orange-100 transition">건설</button>
+                    <button onclick="searchCategory('부동산')" class="text-[10px] bg-emerald-50 text-emerald-700 px-2 py-1 rounded font-bold hover:bg-emerald-100 transition">부동산</button>
+                    <button onclick="searchCategory('보험')" class="text-[10px] bg-blue-50 text-blue-700 px-2 py-1 rounded font-bold hover:bg-blue-100 transition">보험</button>
+                    <button onclick="searchCategory('은행')" class="text-[10px] bg-indigo-50 text-indigo-700 px-2 py-1 rounded font-bold hover:bg-indigo-100 transition">은행</button>
+                    <button onclick="searchCategory('증권')" class="text-[10px] bg-purple-50 text-purple-700 px-2 py-1 rounded font-bold hover:bg-purple-100 transition">증권</button>
+                    <button onclick="searchCategory('캐피탈')" class="text-[10px] bg-rose-50 text-rose-700 px-2 py-1 rounded font-bold hover:bg-rose-100 transition">캐피탈</button>
+                    <button onclick="searchCategory('제약')" class="text-[10px] bg-cyan-50 text-cyan-700 px-2 py-1 rounded font-bold hover:bg-cyan-100 transition">제약</button>
+                    <button onclick="searchCategory('병원')" class="text-[10px] bg-cyan-50 text-cyan-700 px-2 py-1 rounded font-bold hover:bg-cyan-100 transition">병원</button>
+                    <button onclick="searchCategory('자동차')" class="text-[10px] bg-slate-100 text-slate-700 px-2 py-1 rounded font-bold hover:bg-slate-200 transition">자동차</button>
+                    <button onclick="searchCategory('식품')" class="text-[10px] bg-amber-50 text-amber-700 px-2 py-1 rounded font-bold hover:bg-amber-100 transition">식품</button>
+                    <button onclick="searchCategory('전자')" class="text-[10px] bg-violet-50 text-violet-700 px-2 py-1 rounded font-bold hover:bg-violet-100 transition">전자</button>
+                    <button onclick="searchCategory('화학')" class="text-[10px] bg-lime-50 text-lime-700 px-2 py-1 rounded font-bold hover:bg-lime-100 transition">화학</button>
+                    <button onclick="searchCategory('철강')" class="text-[10px] bg-slate-100 text-slate-700 px-2 py-1 rounded font-bold hover:bg-slate-200 transition">철강</button>
+                    <button onclick="searchCategory('에너지')" class="text-[10px] bg-yellow-50 text-yellow-700 px-2 py-1 rounded font-bold hover:bg-yellow-100 transition">에너지</button>
+                    <button onclick="searchCategory('물류')" class="text-[10px] bg-teal-50 text-teal-700 px-2 py-1 rounded font-bold hover:bg-teal-100 transition">물류</button>
+                    <button onclick="searchCategory('유통')" class="text-[10px] bg-pink-50 text-pink-700 px-2 py-1 rounded font-bold hover:bg-pink-100 transition">유통</button>
+                    <button onclick="searchCategory('호텔')" class="text-[10px] bg-fuchsia-50 text-fuchsia-700 px-2 py-1 rounded font-bold hover:bg-fuchsia-100 transition">호텔</button>
+                    <button onclick="searchCategory('교육')" class="text-[10px] bg-sky-50 text-sky-700 px-2 py-1 rounded font-bold hover:bg-sky-100 transition">교육</button>
+                    <button onclick="searchCategory('엔터')" class="text-[10px] bg-rose-50 text-rose-700 px-2 py-1 rounded font-bold hover:bg-rose-100 transition">엔터</button>
+                    <button onclick="searchCategory('게임')" class="text-[10px] bg-violet-50 text-violet-700 px-2 py-1 rounded font-bold hover:bg-violet-100 transition">게임</button>
+                    <button onclick="searchCategory('바이오')" class="text-[10px] bg-green-50 text-green-700 px-2 py-1 rounded font-bold hover:bg-green-100 transition">바이오</button>
+                    <button onclick="searchCategory('섬유')" class="text-[10px] bg-neutral-100 text-neutral-700 px-2 py-1 rounded font-bold hover:bg-neutral-200 transition">섬유</button>
+                    <button onclick="searchCategory('조선')" class="text-[10px] bg-blue-50 text-blue-700 px-2 py-1 rounded font-bold hover:bg-blue-100 transition">조선</button>
+                    <button onclick="searchCategory('항공')" class="text-[10px] bg-sky-50 text-sky-700 px-2 py-1 rounded font-bold hover:bg-sky-100 transition">항공</button>
+                    <button onclick="searchCategory('통신')" class="text-[10px] bg-indigo-50 text-indigo-700 px-2 py-1 rounded font-bold hover:bg-indigo-100 transition">통신</button>
+                    <button onclick="searchCategory('반도체')" class="text-[10px] bg-purple-50 text-purple-700 px-2 py-1 rounded font-bold hover:bg-purple-100 transition">반도체</button>
                 </div>
             </div>
 
